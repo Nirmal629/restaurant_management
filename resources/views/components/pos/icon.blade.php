@@ -62,6 +62,13 @@
         'expand'      => ['M9 4H5a1 1 0 0 0-1 1v4', 'M15 4h4a1 1 0 0 1 1 1v4', 'M9 20H5a1 1 0 0 1-1-1v-4', 'M15 20h4a1 1 0 0 0 1-1v-4'],
         'alert'       => ['M12 3l10 18H2z', 'M12 10v4', 'M12 17.5h.01'],
         'filter'      => ['M4 5h16l-6 7v6l-4 2v-8z'],
+
+        /* Billing, Payment & Split Bill — additive only, no existing key touched. */
+        'tag'         => ['M12 3h6a2 2 0 0 1 2 2v6l-9 9-8-8 9-9z', 'M16 8h.01'],
+        'undo'        => ['M7 8L3 12l4 4', 'M3 12h11a6 6 0 0 1 0 12h-2'],
+        'shield'      => ['M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z', 'M9.5 12l1.8 1.8L15 10'],
+        'mail'        => ['M4 6h16v12H4z', 'M4 7l8 6 8-6'],
+        'chat'        => ['M4 5h16v11H8l-4 4z'],
     ];
     $d = $paths[$name] ?? ['M12 12h.01'];
 @endphp

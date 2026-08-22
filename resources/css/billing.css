@@ -1,0 +1,78 @@
+/* ==========================================================================
+   Billing, Payment & Split Bill — page-specific rules only.
+
+   Layout primitives (pos-shell, pos-header, pos-infobar, pos-scroll, pos-dock,
+   pos-num, pos-no-scrollbar, pos-hatch, …) are shared from resources/css/pos.css,
+   which this page also loads, so Billing matches POS/Floor/KDS exactly.
+   ========================================================================== */
+
+.bil-root {
+    --bil-items-w: 46%;
+    --bil-summary-w: 22%;
+    /* Payment column takes the remainder. */
+}
+
+@media (max-width: 1500px) {
+    .bil-root {
+        --bil-items-w: 44%;
+        --bil-summary-w: 24%;
+    }
+}
+
+/* 1024px landscape: collapse to two zones — items, then summary+payment stacked
+   and reachable via tabs, per the brief. */
+@media (max-width: 1279px) {
+    .bil-root {
+        --bil-items-w: 100%;
+    }
+}
+
+.bil-workspace {
+    display: flex;
+    overflow: hidden;
+}
+
+.bil-items-col {
+    width: var(--bil-items-w);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.bil-summary-col {
+    width: var(--bil-summary-w);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.bil-payment-col {
+    flex: 1 1 auto;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+@media (max-width: 1279px) {
+    .bil-summary-col,
+    .bil-payment-col {
+        display: none;
+    }
+    .bil-tab-active.bil-summary-col,
+    .bil-tab-active.bil-payment-col {
+        display: flex;
+        width: 100%;
+    }
+}
+
+.bil-item-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 10px;
+    align-items: start;
+}

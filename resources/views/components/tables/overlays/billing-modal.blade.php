@@ -22,12 +22,12 @@
 
     <x-slot:footer>
         <div class="space-y-1.5">
-            <button type="button" @click="goToPos(activeCard)"
-                    class="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 text-[12.5px] font-black uppercase tracking-wide text-white hover:bg-emerald-500">
-                <x-pos.icon name="cash" class="h-4 w-4" /> Take Payment
-            </button>
+            <a href="{{ route('billing') }}"
+               class="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 text-[12.5px] font-black uppercase tracking-wide text-white hover:bg-emerald-500">
+                <x-pos.icon name="cash" class="h-4 w-4" /> Take Payment — Open Billing
+            </a>
             <div class="grid grid-cols-2 gap-1.5">
-                <button type="button" @click="goToPos(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Open Bill</button>
+                <button type="button" @click="goToPos(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Open in POS</button>
                 <button type="button" @click="printBill(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Print Bill</button>
             </div>
             <button type="button" @click="cancelBill(activeCard)"

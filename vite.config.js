@@ -14,6 +14,8 @@ export default defineConfig({
                 'resources/js/tables.js',
                 'resources/css/kds.css',
                 'resources/js/kds.js',
+                'resources/css/billing.css',
+                'resources/js/billing.js',
             ],
             refresh: true,
         }),

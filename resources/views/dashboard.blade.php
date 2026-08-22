@@ -36,6 +36,7 @@
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Inventory</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Purchases</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Expenses</a>
+                        <a href="{{ route('billing') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Billing</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Reports</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Employees</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Settings</a>
