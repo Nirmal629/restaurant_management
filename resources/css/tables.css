@@ -1,0 +1,93 @@
+/* ==========================================================================
+   Floor & Table Management — page-specific rules only.
+
+   Layout primitives (pos-shell, pos-header, pos-scroll, pos-dock, pos-num,
+   pos-no-scrollbar, pos-hatch, …) are shared from resources/css/pos.css,
+   which this page also loads — same "operational terminal" chrome as the
+   POS screen, per the brief. Nothing here duplicates those rules; this file
+   only adds what the floor map needs that the POS layout never did.
+   ========================================================================== */
+
+.flr-root {
+    --flr-rail-w: 208px;
+    --flr-cell: 138px;
+}
+
+@media (max-height: 820px) {
+    .flr-root {
+        --flr-cell: 122px;
+    }
+}
+
+@media (min-width: 1700px) {
+    .flr-root {
+        --flr-rail-w: 232px;
+        --flr-cell: 152px;
+    }
+}
+
+/* 1024px tablet landscape: sidebar collapses to horizontal floor tabs. */
+@media (max-width: 1199px) {
+    .flr-root {
+        --flr-rail-w: 0px;
+    }
+}
+
+/* pos-workspace is a row by default; below 1200px this page stacks floor
+   tabs above the map instead of a side rail, so the row becomes a column. */
+.flr-workspace {
+    flex-direction: column;
+}
+@media (min-width: 1200px) {
+    .flr-workspace {
+        flex-direction: row;
+    }
+}
+
+.flr-map {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--flr-cell), 1fr));
+    grid-auto-rows: minmax(96px, auto);
+    gap: 10px;
+    align-content: start;
+}
+
+/* Rectangular (6–8 seat) tables read as long tables on the floor plan. */
+.flr-span-2 {
+    grid-column: span 2;
+}
+
+@media (max-width: 640px) {
+    .flr-span-2 {
+        grid-column: span 1;
+    }
+}
+
+.flr-card {
+    height: 96px;
+}
+
+/* Edit-layout affordance: dashed outline + grab cursor, no functional DnD
+   persistence — reordering only changes in-memory array order. */
+.flr-editable {
+    cursor: grab;
+    border-style: dashed !important;
+}
+.flr-editable:active {
+    cursor: grabbing;
+}
+.flr-dragging {
+    opacity: 0.4;
+}
+
+/* Section label chips overlaid on the floor map (Window Side, Entrance, …). */
+.flr-section-chip {
+    pointer-events: none;
+}
+
+/* Pseudo-QR speckle grid — placeholder only, not a real scannable code. */
+.flr-qr {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+}
