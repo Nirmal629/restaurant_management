@@ -12,6 +12,8 @@ export default defineConfig({
                 'resources/js/pos.js',
                 'resources/css/tables.css',
                 'resources/js/tables.js',
+                'resources/css/kds.css',
+                'resources/js/kds.js',
             ],
             refresh: true,
         }),

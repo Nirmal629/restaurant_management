@@ -10,3 +10,4 @@ Route::view('/change-password', 'auth.change-password')->name('password.change')
 Route::view('/dashboard', 'dashboard')->name('dashboard');
 Route::view('/pos', 'pos')->name('pos');
 Route::view('/tables', 'tables')->name('tables');
+Route::view('/kds', 'kds')->name('kds');

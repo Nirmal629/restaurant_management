@@ -29,7 +29,7 @@
                         <a href="{{ route('pos') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">POS</a>
                         <a href="{{ route('tables') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Tables</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Orders</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Kitchen</a>
+                        <a href="{{ route('kds') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Kitchen</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Reservations</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Customers</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Menu</a>

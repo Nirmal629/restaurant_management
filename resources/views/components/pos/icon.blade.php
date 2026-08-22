@@ -55,6 +55,13 @@
         'qr'          => ['M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z', 'M14 14h2v2h-2zM18 14h2v6h-6v-2h4z', 'M14 18h2v2h-2z'],
         'grab'        => ['M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01'],
         'pin'         => ['M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z', 'M12 13a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'],
+
+        /* Kitchen Display System — additive only, no existing key touched. */
+        'volume'      => ['M4 9v6h4l5 4V5L8 9z', 'M16.5 8.5a5 5 0 0 1 0 7'],
+        'volume-off'  => ['M4 9v6h4l5 4V5L8 9z', 'M17 9l4 6M21 9l-4 6'],
+        'expand'      => ['M9 4H5a1 1 0 0 0-1 1v4', 'M15 4h4a1 1 0 0 1 1 1v4', 'M9 20H5a1 1 0 0 1-1-1v-4', 'M15 20h4a1 1 0 0 0 1-1v-4'],
+        'alert'       => ['M12 3l10 18H2z', 'M12 10v4', 'M12 17.5h.01'],
+        'filter'      => ['M4 5h16l-6 7v6l-4 2v-8z'],
     ];
     $d = $paths[$name] ?? ['M12 12h.01'];
 @endphp

@@ -1,0 +1,99 @@
+/* ==========================================================================
+   Kitchen Display System — page-specific rules only.
+
+   Layout primitives (pos-shell, pos-header, pos-infobar, pos-scroll, pos-dock,
+   pos-num, pos-no-scrollbar, pos-hatch, …) are shared from resources/css/pos.css,
+   which this page also loads, so the KDS matches the POS/Floor screens exactly.
+   ========================================================================== */
+
+.kds-root {
+    --kds-col-min: 300px;
+    --kds-card-text: 12.5px;
+    --kds-card-title: 15px;
+}
+
+@media (max-height: 820px) {
+    .kds-root {
+        --kds-col-min: 270px;
+    }
+}
+
+/* 1024x768: columns become horizontally scrollable rather than shrinking
+   past readability, per the brief. */
+@media (max-width: 1199px) {
+    .kds-root {
+        --kds-col-min: 260px;
+    }
+}
+
+.kds-board-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.kds-board {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(var(--kds-col-min), 1fr);
+    gap: 10px;
+    height: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+}
+
+.kds-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Kitchen TV mode: bigger everything, controls simplified, viewable from
+   across a pass. Toggled by adding .kds-tv on the root. */
+.kds-tv {
+    --kds-card-text: 16px;
+    --kds-card-title: 20px;
+}
+.kds-tv .kds-board {
+    gap: 14px;
+}
+.kds-tv .kds-hide-secondary {
+    display: none !important;
+}
+
+.kds-card-title {
+    font-size: var(--kds-card-title);
+}
+.kds-card-text {
+    font-size: var(--kds-card-text);
+}
+
+/* Left accent rail communicates urgency alongside the text label, never
+   instead of it. */
+.kds-rail {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 0;
+    width: 4px;
+    border-radius: 3px;
+}
+
+/* Priority ribbon corner — small, doesn't compete with the delay indicator. */
+.kds-ribbon {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    border-top-right-radius: 6px;
+}
+
+@keyframes kds-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+.kds-pulse {
+    animation: kds-pulse 1.6s ease-in-out infinite;
+}
