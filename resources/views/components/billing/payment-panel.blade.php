@@ -44,9 +44,9 @@
                 <div>
                     <p class="mb-1.5 text-[10px] font-black uppercase tracking-[0.09em] text-slate-500">Quick Payment</p>
                     <div class="grid grid-cols-3 gap-1.5">
-                        <button type="button" @click="quickFull('cash')" :disabled="dueAmount <= 0" class="min-h-10 rounded-md border border-slate-300 bg-white px-1 text-[10px] font-bold uppercase leading-tight text-slate-700 hover:border-slate-900 disabled:opacity-40">Cash Exact</button>
-                        <button type="button" @click="quickFull('upi')" :disabled="dueAmount <= 0" class="min-h-10 rounded-md border border-slate-300 bg-white px-1 text-[10px] font-bold uppercase leading-tight text-slate-700 hover:border-slate-900 disabled:opacity-40">UPI Full</button>
-                        <button type="button" @click="quickFull('credit')" :disabled="dueAmount <= 0" class="min-h-10 rounded-md border border-slate-300 bg-white px-1 text-[10px] font-bold uppercase leading-tight text-slate-700 hover:border-slate-900 disabled:opacity-40">Card Full</button>
+                        <button type="button" @click="quickFull('cash')" :disabled="saving || dueAmount <= 0" :aria-busy="saving ? 'true' : 'false'" class="min-h-10 rounded-md border border-slate-300 bg-white px-1 text-[10px] font-bold uppercase leading-tight text-slate-700 hover:border-slate-900 disabled:opacity-40">Cash Exact</button>
+                        <button type="button" @click="quickFull('upi')" :disabled="saving || dueAmount <= 0" :aria-busy="saving ? 'true' : 'false'" class="min-h-10 rounded-md border border-slate-300 bg-white px-1 text-[10px] font-bold uppercase leading-tight text-slate-700 hover:border-slate-900 disabled:opacity-40">UPI Full</button>
+                        <button type="button" @click="quickFull('credit')" :disabled="saving || dueAmount <= 0" :aria-busy="saving ? 'true' : 'false'" class="min-h-10 rounded-md border border-slate-300 bg-white px-1 text-[10px] font-bold uppercase leading-tight text-slate-700 hover:border-slate-900 disabled:opacity-40">Card Full</button>
                     </div>
                 </div>
 
@@ -60,7 +60,7 @@
                 <x-billing.card-payment-panel />
                 <x-billing.generic-payment-panel />
 
-                <button type="button" @click="addPayment()" :disabled="!(Number(payDraft.amount) > 0) || dueAmount <= 0"
+                <button type="button" @click="addPayment()" :disabled="saving || !(Number(payDraft.amount) > 0) || dueAmount <= 0" :aria-busy="saving ? 'true' : 'false'"
                         class="flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-slate-900 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                     <x-pos.icon name="plus" class="h-4 w-4" stroke="2.4" /> Add Payment Method
                 </button>

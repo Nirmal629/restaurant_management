@@ -99,8 +99,8 @@
                 <div class="pos-dock flex items-center gap-2 border-t border-slate-200 bg-white px-4 py-2.5">
                     <span x-show="sectionDirty" class="text-[11px] font-semibold text-amber-700">You have unsaved changes in this section.</span>
                     <span class="flex-1"></span>
-                    <button type="button" @click="resetSection()" :disabled="saving" class="h-9 rounded-md border border-slate-300 bg-white px-3 text-[11.5px] font-bold text-slate-700 hover:border-slate-900 disabled:cursor-not-allowed disabled:opacity-40">Reset</button>
-                    <button type="button" @click="saveChanges()" :disabled="!sectionDirty || saving" class="h-9 rounded-md bg-slate-900 px-4 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Changes</button>
+                    <button type="button" @click="resetSection()" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="h-9 rounded-md border border-slate-300 bg-white px-3 text-[11.5px] font-bold text-slate-700 hover:border-slate-900 disabled:cursor-not-allowed disabled:opacity-40">Reset</button>
+                    <button type="button" @click="saveChanges()" :disabled="!sectionDirty || saving" :aria-busy="saving ? 'true' : 'false'" class="h-9 rounded-md bg-slate-900 px-4 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Changes</button>
                 </div>
             </section>
         </div>

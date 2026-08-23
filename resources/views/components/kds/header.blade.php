@@ -94,12 +94,12 @@
 
         <div class="text-right leading-none">
             <p class="pos-num text-[13px] font-bold text-white" x-text="clock"></p>
-            <p class="mt-0.5 text-[9.5px] font-bold uppercase tracking-[0.08em] text-emerald-400">Shift <span x-text="operator.shift"></span></p>
+            <p class="mt-0.5 text-[9.5px] font-bold uppercase tracking-[0.08em] text-emerald-400">Shift <span x-text="operator.shift || 'Full Day'"></span></p>
         </div>
         <span class="hidden items-center gap-1.5 rounded-md px-1.5 py-1 lg:flex">
             <span class="grid h-7 w-7 place-items-center rounded-full bg-slate-700 text-[11px] font-bold text-white" x-text="operator.initials"></span>
             <span class="text-left leading-none">
-                <span class="block text-[11.5px] font-bold text-white" x-text="operator.role + ' ' + operator.name"></span>
+                <span class="block text-[11.5px] font-bold text-white" x-text="[(operator.role || ''), (operator.name || 'Kitchen')].filter(Boolean).join(' ')"></span>
             </span>
         </span>
     </div>

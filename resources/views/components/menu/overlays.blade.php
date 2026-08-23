@@ -73,7 +73,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveItem()" :disabled="saving || !itemDraft.name?.trim() || !itemDraft.sku?.trim() || !itemDraft.price" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+            <button type="button" @click="saveItem()" :disabled="saving || !itemDraft.name?.trim() || !itemDraft.sku?.trim() || !itemDraft.price" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-text="itemDraft.id ? 'Save Changes' : 'Add Item'"></span>
             </button>
         </div>
@@ -122,7 +122,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveCategory()" :disabled="saving || !categoryDraft.label?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
+            <button type="button" @click="saveCategory()" :disabled="saving || !categoryDraft.label?.trim()" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -169,7 +169,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveModifier()" :disabled="saving || !modifierDraft.label?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
+            <button type="button" @click="saveModifier()" :disabled="saving || !modifierDraft.label?.trim()" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -206,7 +206,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveCombo()" :disabled="saving || !comboDraft.name?.trim() || !comboDraft.price" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Combo</button>
+            <button type="button" @click="saveCombo()" :disabled="saving || !comboDraft.name?.trim() || !comboDraft.price" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Combo</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>

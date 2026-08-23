@@ -28,10 +28,10 @@
 
     <div class="mt-2 flex flex-wrap gap-1.5" @click.stop>
         <template x-if="{{ $r }}.status === 'pending'">
-            <button type="button" @click="confirmReservation({{ $r }})" class="rounded-md bg-slate-900 px-2.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-white hover:bg-slate-800">Confirm</button>
+            <button type="button" @click="confirmReservation({{ $r }})" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="rounded-md bg-slate-900 px-2.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300">Confirm</button>
         </template>
         <template x-if="{{ $r }}.status === 'confirmed'">
-            <button type="button" @click="markArrived({{ $r }})" class="rounded-md bg-amber-500 px-2.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-slate-950 hover:bg-amber-400">Mark Arrived</button>
+            <button type="button" @click="markArrived({{ $r }})" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="rounded-md bg-amber-500 px-2.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-slate-950 hover:bg-amber-400 disabled:cursor-wait disabled:bg-slate-300 disabled:text-white">Mark Arrived</button>
         </template>
         <template x-if="{{ $r }}.status === 'arrived'">
             <button type="button" @click="openSeat({{ $r }})" class="rounded-md bg-emerald-600 px-2.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wide text-white hover:bg-emerald-500">Seat Customer</button>
@@ -46,7 +46,7 @@
             <button type="button" @click="openEdit({{ $r }})" class="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[10.5px] font-bold text-slate-700 hover:border-slate-900">Edit</button>
         </template>
         <template x-if="['pending', 'confirmed', 'arrived'].includes({{ $r }}.status)">
-            <button type="button" @click="markNoShow({{ $r }})" class="rounded-md border border-rose-300 bg-white px-2.5 py-1.5 text-[10.5px] font-bold text-rose-600 hover:border-rose-500 hover:bg-rose-50">No Show</button>
+            <button type="button" @click="markNoShow({{ $r }})" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="rounded-md border border-rose-300 bg-white px-2.5 py-1.5 text-[10.5px] font-bold text-rose-600 hover:border-rose-500 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-50">No Show</button>
         </template>
         <template x-if="!['seated', 'completed', 'cancelled', 'no_show'].includes({{ $r }}.status)">
             <button type="button" @click="openCancel({{ $r }})" class="rounded-md border border-rose-300 bg-white px-2.5 py-1.5 text-[10.5px] font-bold text-rose-600 hover:border-rose-500 hover:bg-rose-50">Cancel</button>

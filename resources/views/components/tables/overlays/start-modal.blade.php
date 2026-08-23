@@ -42,7 +42,7 @@
         <div class="flex gap-2">
             <button type="button" @click="back()"
                     class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="confirmStart()" :disabled="!startDraft.waiter"
+            <button type="button" @click="confirmStart()" :disabled="saving || !startDraft.waiter" :aria-busy="saving ? 'true' : 'false'"
                     class="h-10 flex-1 rounded-md bg-emerald-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300">Start Order</button>
         </div>
     </x-slot:footer>

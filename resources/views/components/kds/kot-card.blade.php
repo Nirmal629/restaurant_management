@@ -64,20 +64,20 @@
     {{-- Primary action --}}
     <div class="mt-2" @click.stop>
         <template x-if="{{ $ticket }}.status === 'new'">
-            <button type="button" @click="acceptTicket({{ $ticket }})"
-                    class="flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-slate-900 text-[13px] font-black uppercase tracking-wide text-white hover:bg-slate-800">
+            <button type="button" @click="acceptTicket({{ $ticket }})" :disabled="saving" :aria-busy="saving ? 'true' : 'false'"
+                    class="flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-slate-900 text-[13px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300">
                 Accept
             </button>
         </template>
         <template x-if="{{ $ticket }}.status === 'accepted'">
-            <button type="button" @click="startPreparing({{ $ticket }})"
-                    class="flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-orange-500 text-[13px] font-black uppercase tracking-wide text-white hover:bg-orange-400">
+            <button type="button" @click="startPreparing({{ $ticket }})" :disabled="saving" :aria-busy="saving ? 'true' : 'false'"
+                    class="flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-orange-500 text-[13px] font-black uppercase tracking-wide text-white hover:bg-orange-400 disabled:cursor-wait disabled:bg-slate-300">
                 Start Preparing
             </button>
         </template>
         <template x-if="{{ $ticket }}.status === 'preparing'">
-            <button type="button" @click="markAllReady({{ $ticket }})"
-                    class="flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 text-[13px] font-black uppercase tracking-wide text-white hover:bg-emerald-500">
+            <button type="button" @click="markAllReady({{ $ticket }})" :disabled="saving" :aria-busy="saving ? 'true' : 'false'"
+                    class="flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 text-[13px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:cursor-wait disabled:bg-slate-300">
                 Mark Ready
             </button>
         </template>
@@ -87,8 +87,8 @@
                         class="h-10 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900 disabled:cursor-not-allowed disabled:opacity-40">
                     Notify Waiter
                 </button>
-                <button type="button" @click="markPickedUp({{ $ticket }})"
-                        class="h-10 rounded-md bg-slate-900 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800">
+                <button type="button" @click="markPickedUp({{ $ticket }})" :disabled="saving" :aria-busy="saving ? 'true' : 'false'"
+                        class="h-10 rounded-md bg-slate-900 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300">
                     Picked Up
                 </button>
             </div>

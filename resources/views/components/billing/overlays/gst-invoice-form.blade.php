@@ -24,6 +24,6 @@
         </div>
     </div>
     <x-slot:footer>
-        <button type="button" @click="saveGstInvoice()" :disabled="saving" class="h-10 w-full rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300">Save</button>
+        <button type="button" @click="saveGstInvoice()" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="h-10 w-full rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300">Save</button>
     </x-slot:footer>
 </x-pos.dialog>

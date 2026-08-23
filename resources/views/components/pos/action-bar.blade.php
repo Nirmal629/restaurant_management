@@ -5,8 +5,8 @@
 <div class="pos-dock relative border-t border-slate-200 bg-white px-2 pb-2 pt-2">
 
     {{-- Primary operational action ------------------------------------- --}}
-    <button type="button" @click="sendKot()" :disabled="!unsentLines.length"
-            :class="unsentLines.length
+    <button type="button" @click="sendKot()" :disabled="saving || !unsentLines.length" :aria-busy="saving ? 'true' : 'false'"
+            :class="unsentLines.length && !saving
                 ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 active:bg-amber-600'
                 : 'cursor-not-allowed bg-slate-100 text-slate-400'"
             class="mb-1.5 flex h-11 w-full items-center justify-center gap-2 rounded-md text-[13.5px] font-black uppercase tracking-[0.08em]">
@@ -35,13 +35,13 @@
             More
         </button>
 
-        <button type="button" @click="moveToBilling()"
+        <button type="button" @click="moveToBilling()" :disabled="saving" :aria-busy="saving ? 'true' : 'false'"
                 class="flex h-10 flex-col items-center justify-center gap-0.5 rounded-md bg-slate-800 text-[10.5px] font-bold uppercase tracking-wide text-white hover:bg-slate-900">
             <x-pos.icon name="receipt" class="h-4 w-4" />
             Bill
         </button>
 
-        <button type="button" @click="openPayment()"
+        <button type="button" @click="openPayment()" :disabled="saving" :aria-busy="saving ? 'true' : 'false'"
                 class="flex h-10 flex-col items-center justify-center gap-0.5 rounded-md bg-emerald-600 text-[10.5px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 active:bg-emerald-700">
             <x-pos.icon name="cash" class="h-4 w-4" />
             Pay

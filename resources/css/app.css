@@ -38,3 +38,30 @@
 body {
     font-family: var(--font-sans);
 }
+
+button[aria-busy="true"],
+a[aria-busy="true"] {
+    cursor: wait;
+    pointer-events: none;
+    opacity: 0.78;
+}
+
+button[aria-busy="true"]::after,
+a[aria-busy="true"]::after {
+    content: "";
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    margin-left: 0.45rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 9999px;
+    vertical-align: -0.12em;
+    animation: app-spin 0.65s linear infinite;
+}
+
+@keyframes app-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

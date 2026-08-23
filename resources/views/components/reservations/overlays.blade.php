@@ -39,8 +39,8 @@
     <x-slot:footer>
         <template x-if="activeReservation">
             <div class="grid grid-cols-2 gap-1.5">
-                <button type="button" x-show="activeReservation.status === 'pending'" @click="confirmReservation(activeReservation)" class="col-span-2 h-10 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800">Confirm</button>
-                <button type="button" x-show="activeReservation.status === 'confirmed'" @click="markArrived(activeReservation)" class="col-span-2 h-10 rounded-md bg-amber-500 text-[12px] font-black uppercase tracking-wide text-slate-950 hover:bg-amber-400">Mark Arrived</button>
+                <button type="button" x-show="activeReservation.status === 'pending'" @click="confirmReservation(activeReservation)" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="col-span-2 h-10 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300">Confirm</button>
+                <button type="button" x-show="activeReservation.status === 'confirmed'" @click="markArrived(activeReservation)" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="col-span-2 h-10 rounded-md bg-amber-500 text-[12px] font-black uppercase tracking-wide text-slate-950 hover:bg-amber-400 disabled:cursor-wait disabled:bg-slate-300 disabled:text-white">Mark Arrived</button>
                 <button type="button" x-show="activeReservation.status === 'arrived'" @click="openSeat(activeReservation)" class="col-span-2 h-10 rounded-md bg-emerald-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-emerald-500">Seat Customer</button>
                 <a href="{{ route('pos') }}" x-show="activeReservation.status === 'seated'" class="col-span-2 flex h-10 items-center justify-center rounded-md bg-emerald-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-emerald-500">Open POS</a>
                 <button type="button" x-show="!['seated','completed','cancelled','no_show'].includes(activeReservation.status)" @click="openEdit(activeReservation)" class="h-9 rounded-md border border-slate-300 bg-white text-[11px] font-bold text-slate-700 hover:border-slate-900">Edit</button>
@@ -97,7 +97,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveReservation()" :disabled="!createDraft.customer?.trim() || (createDraft.phone || '').trim().length < 10"
+            <button type="button" @click="saveReservation()" :disabled="saving || !createDraft.customer?.trim() || (createDraft.phone || '').trim().length < 10" :aria-busy="saving ? 'true' : 'false'"
                     class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-text="createDraft.id ? 'Save Changes' : 'Create Reservation'"></span>
             </button>
@@ -154,7 +154,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="confirmSeat()" :disabled="!seatDraft.table" class="h-10 flex-1 rounded-md bg-emerald-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300">Confirm</button>
+            <button type="button" @click="confirmSeat()" :disabled="saving || !seatDraft.table" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-emerald-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300">Confirm</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -176,7 +176,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Keep Reservation</button>
-            <button type="button" @click="confirmCancel()" :disabled="!cancelDraft.reason" class="h-10 flex-1 rounded-md bg-rose-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-slate-300">Cancel Reservation</button>
+            <button type="button" @click="confirmCancel()" :disabled="saving || !cancelDraft.reason" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-rose-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-slate-300">Cancel Reservation</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>

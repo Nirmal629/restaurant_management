@@ -88,7 +88,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="savePO()" :disabled="saving" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300" x-text="poFormMode === 'edit' ? 'Save Changes' : 'Save Draft'"></button>
+            <button type="button" @click="savePO()" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300" x-text="poFormMode === 'edit' ? 'Save Changes' : 'Save Draft'"></button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -107,7 +107,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="confirmApprove()" :disabled="saving" class="h-10 flex-1 rounded-md bg-sky-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300">Approve</button>
+            <button type="button" @click="confirmApprove()" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-sky-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300">Approve</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -146,7 +146,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveGRN()" :disabled="saving || !grnDraft.invoiceNumber?.trim()" class="h-10 flex-1 rounded-md bg-emerald-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300">Save Receipt</button>
+            <button type="button" @click="saveGRN()" :disabled="saving || !grnDraft.invoiceNumber?.trim()" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-emerald-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300">Save Receipt</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>

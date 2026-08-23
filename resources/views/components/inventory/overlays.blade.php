@@ -15,7 +15,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveIngredient()" :disabled="saving || !ingredientDraft.name?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
+            <button type="button" @click="saveIngredient()" :disabled="saving || !ingredientDraft.name?.trim()" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -78,7 +78,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveSupplier()" :disabled="saving || !supplierDraft.name?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
+            <button type="button" @click="saveSupplier()" :disabled="saving || !supplierDraft.name?.trim()" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -100,7 +100,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="confirmAdjust()" :disabled="saving || !Number(adjustDraft.qty)" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Apply</button>
+            <button type="button" @click="confirmAdjust()" :disabled="saving || !Number(adjustDraft.qty)" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Apply</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -160,7 +160,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveRecipe()" :disabled="saving" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Recipe</button>
+            <button type="button" @click="saveRecipe()" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Recipe</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -184,7 +184,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveWastage()" :disabled="saving || !Number(wastageDraft.qty) || !wastageDraft.reason" class="h-10 flex-1 rounded-md bg-rose-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-slate-300">Record Wastage</button>
+            <button type="button" @click="saveWastage()" :disabled="saving || !Number(wastageDraft.qty) || !wastageDraft.reason" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-rose-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-slate-300">Record Wastage</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -218,7 +218,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="submitStockCount()" :disabled="saving" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Submit Count</button>
+            <button type="button" @click="submitStockCount()" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Submit Count</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>

@@ -172,7 +172,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="stack = ['coupons']; cleanupOverlayState()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveCoupon()" :disabled="saving || !couponDraft.code?.trim() || !couponDraft.name?.trim() || !(Number(couponDraft.value) > 0)" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Coupon</button>
+            <button type="button" @click="saveCoupon()" :disabled="saving || !couponDraft.code?.trim() || !couponDraft.name?.trim() || !(Number(couponDraft.value) > 0)" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Coupon</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -202,7 +202,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveCustomer()" :disabled="saving || !draft.name?.trim() || (draft.phone || '').trim().length < 10" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+            <button type="button" @click="saveCustomer()" :disabled="saving || !draft.name?.trim() || (draft.phone || '').trim().length < 10" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-text="draft.id ? 'Save Changes' : 'Add Customer'"></span>
             </button>
         </div>
@@ -224,7 +224,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="applyLoyaltyAdjust(activeCustomer)" :disabled="saving || !Number(loyaltyDraft.points) || !loyaltyDraft.reason" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Apply</button>
+            <button type="button" @click="applyLoyaltyAdjust(activeCustomer)" :disabled="saving || !Number(loyaltyDraft.points) || !loyaltyDraft.reason" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Apply</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
@@ -238,7 +238,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveNote(activeCustomer)" :disabled="saving" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Note</button>
+            <button type="button" @click="saveNote(activeCustomer)" :disabled="saving" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Note</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>

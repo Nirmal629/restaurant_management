@@ -67,8 +67,8 @@
          class="mt-1.5 flex justify-end gap-1.5 pl-[26px]">
         <button type="button" @click.stop="openUnavailable({{ $ticket }}, {{ $item }})"
                 class="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[10.5px] font-bold text-slate-600 hover:border-rose-400 hover:text-rose-600">Unavailable</button>
-        <button type="button" @click.stop="markItemReady({{ $ticket }}, {{ $item }})"
-                class="rounded-md bg-emerald-600 px-3 py-1.5 text-[10.5px] font-black uppercase tracking-wide text-white hover:bg-emerald-500">Mark Ready</button>
+        <button type="button" @click.stop="markItemReady({{ $ticket }}, {{ $item }})" :disabled="saving" :aria-busy="saving ? 'true' : 'false'"
+                class="rounded-md bg-emerald-600 px-3 py-1.5 text-[10.5px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:cursor-wait disabled:bg-slate-300">Mark Ready</button>
     </div>
 
     {{-- Fire button for a held course item --}}

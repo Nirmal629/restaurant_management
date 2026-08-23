@@ -63,7 +63,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveExpense()" :disabled="saving || !draft.category || !Number(draft.amount) || !draft.description?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+            <button type="button" @click="saveExpense()" :disabled="saving || !draft.category || !Number(draft.amount) || !draft.description?.trim()" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-text="draft.id ? 'Save Changes' : 'Record Expense'"></span>
             </button>
         </div>
@@ -82,7 +82,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="confirmReject()" :disabled="saving || !rejectDraft.reason?.trim()" class="h-10 flex-1 rounded-md bg-rose-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-slate-300">Reject</button>
+            <button type="button" @click="confirmReject()" :disabled="saving || !rejectDraft.reason?.trim()" :aria-busy="saving ? 'true' : 'false'" class="h-10 flex-1 rounded-md bg-rose-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-slate-300">Reject</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>

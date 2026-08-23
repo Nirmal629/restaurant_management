@@ -22,7 +22,7 @@ export default function reservationsApp() {
         money,
         formatDate,
 
-        reservations: (boot.reservations || RESERVATIONS).map((r) => ({ ...r, history: [...(r.history || [])] })),
+        reservations: (boot.reservations || RESERVATIONS).map((r) => normalizeReservation(r)),
         todayIso: new Date().toISOString().slice(0, 10),
 
         view: 'today', // today | list | calendar
@@ -71,7 +71,7 @@ export default function reservationsApp() {
             if (data.operator) this.operator = data.operator;
             if (data.floors) this.floors = data.floors;
             if (data.tables) this.tables = data.tables;
-            if (data.reservations) this.reservations = data.reservations.map((r) => ({ ...r, history: [...(r.history || [])] }));
+            if (data.reservations) this.reservations = data.reservations.map((r) => normalizeReservation(r));
         },
         async api(url, options = {}) {
             if (!url || this.saving) return null;
@@ -117,7 +117,9 @@ export default function reservationsApp() {
             return this.formatDate(iso);
         },
         timeLabel(t) {
+            if (!t || typeof t !== 'string' || !t.includes(':')) return '-';
             const [h, m] = t.split(':').map(Number);
+            if (!Number.isFinite(h) || !Number.isFinite(m)) return '-';
             const period = h >= 12 ? 'PM' : 'AM';
             const h12 = h % 12 === 0 ? 12 : h % 12;
             return `${h12}:${String(m).padStart(2, '0')} ${period}`;
@@ -299,13 +301,27 @@ export default function reservationsApp() {
            --------------------------------------------------------------- */
         openCreate() {
             this.openRowMenu = null;
-            this.createDraft = { id: null, customer: '', phone: '', email: '', date: this.todayIso, time: '19:00', guests: 2, floor: 'ground', table: null, occasion: 'None', request: '', source: 'Phone', notes: '' };
-            this.open('create');
+            this.createDraft = {
+                id: null,
+                customer: '',
+                phone: '',
+                email: '',
+                date: this.todayIso,
+                time: '19:00',
+                guests: 2,
+                floor: this.floors[0]?.key || 'ground',
+                table: null,
+                occasion: this.occasions[0] || 'None',
+                request: '',
+                source: this.sources[0] || 'Phone',
+                notes: '',
+            };
+            this.openOnly('create');
         },
         openEdit(r) {
             this.openRowMenu = null;
-            this.createDraft = { id: r.id, customer: r.customer, phone: r.phone, email: r.email, date: r.date, time: r.time, guests: r.guests, floor: r.floor, table: r.table, occasion: r.occasion, request: r.request, source: r.source, notes: '' };
-            this.open('create');
+            this.createDraft = { id: r.id, customer: r.customer || '', phone: r.phone || '', email: r.email || '', date: r.date || this.todayIso, time: r.time || '19:00', guests: r.guests || 2, floor: r.floor || this.floors[0]?.key || 'ground', table: r.table || null, occasion: r.occasion || 'None', request: r.request || '', source: r.source || this.sources[0] || 'Phone', notes: '' };
+            this.openOnly('create');
         },
         async saveReservation() {
             const d = this.createDraft;
@@ -329,7 +345,7 @@ export default function reservationsApp() {
            --------------------------------------------------------------- */
         openFindTable() {
             this.findDraft = { guests: 2, date: this.todayIso, time: '19:00', floor: 'all' };
-            this.open('find');
+            this.openOnly('find');
         },
         get findResults() {
             const busy = new Set(
@@ -347,4 +363,23 @@ export default function reservationsApp() {
     };
 }
 
+function normalizeReservation(r = {}) {
+    return {
+        ...r,
+        id: r.id || r.code || r.dbId || 'RES',
+        customer: r.customer || r.customer_name || 'Guest',
+        phone: r.phone || '',
+        email: r.email || '',
+        date: r.date || new Date().toISOString().slice(0, 10),
+        time: r.time || '19:00',
+        guests: Number(r.guests || 1),
+        table: r.table || null,
+        floor: r.floor || 'ground',
+        source: r.source || 'Phone',
+        status: r.status || 'pending',
+        occasion: r.occasion || 'None',
+        request: r.request || '',
+        history: [...(r.history || [])],
+    };
+}
 

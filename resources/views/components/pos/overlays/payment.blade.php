@@ -60,7 +60,7 @@
                 <span class="pos-num text-[20px] font-black text-amber-900" x-text="money(cashChange)"></span>
             </div>
 
-            <button type="button" @click="addPayment()" :disabled="!(Number(payDraft.amount) > 0) || !due"
+            <button type="button" @click="addPayment()" :disabled="saving || !(Number(payDraft.amount) > 0) || !due" :aria-busy="saving ? 'true' : 'false'"
                     class="mt-1.5 h-11 w-full rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 Add tender
             </button>
@@ -101,7 +101,7 @@
                     class="h-12 rounded-md border border-slate-300 bg-white px-4 text-[11.5px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Back</button>
             <button type="button" @click="openSplit()"
                     class="h-12 rounded-md border border-slate-300 bg-white px-4 text-[11.5px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Split</button>
-            <button type="button" @click="settle()" :disabled="due > 0"
+            <button type="button" @click="settle()" :disabled="saving || due > 0" :aria-busy="saving ? 'true' : 'false'"
                     class="h-12 flex-1 rounded-md bg-emerald-600 text-[13px] font-black uppercase tracking-[0.08em] text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-show="due > 0" x-text="'Due ' + money(due)"></span>
                 <span x-show="!due">Settle &amp; close</span>

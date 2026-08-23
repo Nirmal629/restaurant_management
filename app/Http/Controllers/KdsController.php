@@ -67,11 +67,16 @@ class KdsController extends Controller
             ->limit(80)
             ->get();
 
+        $employee = request()->user()?->employee;
+        $operatorName = $employee?->name ?? request()->user()?->name ?? 'Kitchen';
+
         return [
             'venue' => ['name' => config('app.name', 'Restaurant'), 'branch' => 'Main Branch'],
             'operator' => [
-                'name' => request()->user()?->employee?->name ?? request()->user()?->name ?? 'Kitchen',
-                'initials' => str(request()->user()?->employee?->name ?? request()->user()?->name ?? 'K')->explode(' ')->map(fn ($part) => str($part)->substr(0, 1))->take(2)->implode(''),
+                'name' => $operatorName,
+                'role' => $employee?->role?->name ?? 'Kitchen',
+                'initials' => str($operatorName)->explode(' ')->map(fn ($part) => str($part)->substr(0, 1))->take(2)->implode(''),
+                'shift' => str($employee?->shift ?? 'full day')->headline()->toString(),
             ],
             'tickets' => $orders->flatMap(fn (Order $order) => $this->tickets($order))->values()->all(),
         ];
