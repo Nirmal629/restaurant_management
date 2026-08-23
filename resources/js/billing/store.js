@@ -70,6 +70,7 @@ export default function billingApp(posUrl, tablesUrl) {
         /* ---------------------------------------------------------------
            UI state
            --------------------------------------------------------------- */
+        tab: 'summary', // summary | payment — the <1280px tab switcher
         stack: [],
         toast: null,
         moreOpen: false,
@@ -481,6 +482,7 @@ export default function billingApp(posUrl, tablesUrl) {
             this.payDraft.method = key;
             this.payDraft.amount = String(this.dueAmount || '');
             this.upiStatus = 'waiting';
+            this.$nextTick(() => this.focusPayAmount());
         },
         quickCash(v) {
             this.payDraft.amount = String(v);
@@ -770,6 +772,14 @@ export default function billingApp(posUrl, tablesUrl) {
             }
         },
 
+        /** Four mutually-exclusive amount inputs share the DOM at once (x-show, not x-if), so each needs its own ref. */
+        focusPayAmount() {
+            const key = ['credit', 'debit'].includes(this.payDraft.method)
+                ? 'payAmountCard'
+                : { cash: 'payAmountCash', upi: 'payAmountUpi' }[this.payDraft.method] || 'payAmountGeneric';
+            this.$refs[key]?.focus();
+        },
+
         /* ---------------------------------------------------------------
            Keyboard
            --------------------------------------------------------------- */
@@ -778,7 +788,7 @@ export default function billingApp(posUrl, tablesUrl) {
                 F2: () => this.open('customer'),
                 F4: () => this.openDiscount(),
                 F6: () => this.openSplit(),
-                F8: () => this.$refs.payAmount?.focus(),
+                F8: () => this.focusPayAmount(),
                 F9: () => this.dueAmount <= 0 && this.completePayment(),
             };
             if (e.ctrlKey && e.key.toLowerCase() === 'p') {

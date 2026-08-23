@@ -30,16 +30,16 @@
                         <a href="{{ route('tables') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Tables</a>
                         <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Orders</a>
                         <a href="{{ route('kds') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Kitchen</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Reservations</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Customers</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Menu</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Inventory</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Purchases</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Expenses</a>
+                        <a href="{{ route('reservations') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Reservations</a>
+                        <a href="{{ route('customers') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Customers</a>
+                        <a href="{{ route('menu') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Menu</a>
+                        <a href="{{ route('inventory') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Inventory</a>
+                        <a href="{{ route('purchases') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Purchases</a>
+                        <a href="{{ route('expenses') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Expenses</a>
                         <a href="{{ route('billing') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Billing</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Reports</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Employees</a>
-                        <a href="#" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Settings</a>
+                        <a href="{{ route('reports') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Reports</a>
+                        <a href="{{ route('employees') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Employees</a>
+                        <a href="{{ route('settings') }}" class="flex items-center rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white">Settings</a>
                     </nav>
 
                     <div class="border-t border-slate-800 p-4">

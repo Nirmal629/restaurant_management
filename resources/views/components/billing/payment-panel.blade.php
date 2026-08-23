@@ -2,8 +2,12 @@
     PaymentPanel — recap (dock) + scrollable method area + MixedPaymentRows +
     CompletePaymentButton (dock). Grand Total / Paid / Due stay visible here
     regardless of what the cashier scrolls to in the other two columns.
+
+    $attributes is merged onto the root so the caller can bind a reactive
+    class directly onto this flex item (see BillSummary for why a wrapping
+    <div> instead breaks the flex sizing).
 --}}
-<section class="bil-payment-col bg-white">
+<section {{ $attributes->merge(['class' => 'bil-payment-col bg-white']) }}>
 
     {{-- PaymentTotals recap --}}
     <div class="pos-dock grid grid-cols-3 divide-x divide-slate-200 border-b border-slate-200 bg-slate-50">

@@ -38,7 +38,7 @@
     <x-billing.header />
     <x-billing.order-info />
 
-    <div class="pos-workspace bil-workspace" x-data="{ tab: 'summary' }">
+    <div class="pos-workspace bil-workspace">
         <x-billing.items-panel />
 
         {{-- Mobile/1024px tab switcher between Summary and Payment --}}
@@ -47,8 +47,8 @@
             <button type="button" @click="tab = 'payment'" :class="tab === 'payment' ? 'border-b-2 border-slate-900 text-slate-900' : 'text-slate-400'" class="flex-1 py-2 text-[11.5px] font-bold uppercase tracking-wide">Payment</button>
         </div>
 
-        <div :class="tab === 'summary' && 'bil-tab-active'"><x-billing.summary /></div>
-        <div :class="tab === 'payment' && 'bil-tab-active'"><x-billing.payment-panel /></div>
+        <x-billing.summary x-bind:class="tab === 'summary' && 'bil-tab-active'" />
+        <x-billing.payment-panel x-bind:class="tab === 'payment' && 'bil-tab-active'" />
     </div>
 
     <x-billing.toast />
