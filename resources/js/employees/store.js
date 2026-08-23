@@ -135,12 +135,12 @@ export default function employeesApp() {
             this.showForm = true;
             this.profileOpenArmed = false;
             this.suppressProfileUntil = Date.now() + 500;
-            this.draft = { id: null, name: '', phone: '', email: '', address: '', role: this.roles[0] || 'Staff', shift: 'fullday', joiningDate: new Date().toISOString().slice(0, 10) };
+            this.draft = { id: null, name: '', phone: '', email: '', password: '', address: '', role: this.roles[0] || 'Staff', shift: 'fullday', joiningDate: new Date().toISOString().slice(0, 10) };
             this.$nextTick(() => this.focusFirst());
         },
         openEdit(e) {
             this.openRowMenu = null;
-            this.draft = { id: e.id, name: e.name, phone: e.phone, email: e.email, address: e.address, role: e.role, shift: e.shift, joiningDate: e.joiningDate };
+            this.draft = { id: e.id, name: e.name, phone: e.phone, email: e.email, password: '', address: e.address, role: e.role, shift: e.shift, joiningDate: e.joiningDate };
             this.stack = ['form'];
             this.showProfile = false;
             this.showForm = true;
@@ -149,7 +149,7 @@ export default function employeesApp() {
         },
         async saveEmployee() {
             const d = this.draft;
-            if (!d.name.trim() || d.phone.trim().length < 10) return;
+            if (!d.name.trim() || d.phone.trim().length < 10 || !d.email?.trim()) return;
 
             const url = d.id ? `${routes.update}/${d.id}` : routes.store;
             const method = d.id ? 'PUT' : 'POST';
@@ -162,6 +162,7 @@ export default function employeesApp() {
                 shift: d.shift,
                 joiningDate: d.joiningDate || null,
             };
+            if (d.password?.trim()) payload.password = d.password;
 
             const result = await this.request(url, { method, body: JSON.stringify(payload) });
             if (!result) return;

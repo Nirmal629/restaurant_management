@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Supplier;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,7 +12,10 @@ class InventorySupplierWorkflowTest extends TestCase
 
     public function test_supplier_can_be_created_updated_and_deleted_from_inventory(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAsEmployeeWithPermissions([
+            ['Inventory', 'Create'],
+            ['Inventory', 'Edit'],
+        ]);
 
         $create = $this->postJson('/inventory/suppliers', [
             'name' => 'North Market Foods',

@@ -73,11 +73,25 @@
                             </div>
                         </div>
 
-                        <form class="space-y-5" method="POST" action="#">
+                        @if (session('status'))
+                            <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                                {{ session('status') }}
+                            </div>
+                        @endif
+
+                        @if ($errors->any())
+                            <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                                {{ $errors->first() }}
+                            </div>
+                        @endif
+
+                        <form class="space-y-5" method="POST" action="{{ route('password.update') }}">
+                            @csrf
+                            @method('PUT')
                             <div>
                                 <label for="current-password" class="mb-2 block text-sm font-medium text-slate-700">Current password</label>
                                 <div class="relative">
-                                    <input id="current-password" type="password" value="OldPass123" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 pr-11 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="Enter current password" />
+                                    <input id="current-password" name="current_password" type="password" autocomplete="current-password" required class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 pr-11 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="Enter current password" />
                                     <button type="button" class="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700" aria-label="Toggle password visibility">
                                         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                             <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
@@ -90,7 +104,7 @@
                             <div>
                                 <label for="new-password" class="mb-2 block text-sm font-medium text-slate-700">New password</label>
                                 <div class="relative">
-                                    <input id="new-password" type="password" value="NewPass123" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 pr-11 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="Enter a new password" />
+                                    <input id="new-password" name="password" type="password" autocomplete="new-password" required class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 pr-11 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="Enter a new password" />
                                     <button type="button" class="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700" aria-label="Toggle password visibility">
                                         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                             <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
@@ -103,7 +117,7 @@
                             <div>
                                 <label for="confirm-password" class="mb-2 block text-sm font-medium text-slate-700">Confirm new password</label>
                                 <div class="relative">
-                                    <input id="confirm-password" type="password" value="NewPass123" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 pr-11 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="Confirm your new password" />
+                                    <input id="confirm-password" name="password_confirmation" type="password" autocomplete="new-password" required class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 pr-11 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="Confirm your new password" />
                                     <button type="button" class="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700" aria-label="Toggle password visibility">
                                         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                             <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
@@ -123,7 +137,7 @@
                         </form>
 
                         <div class="mt-6 border-t border-slate-200 pt-4 text-center text-sm text-slate-500">
-                            Need to return? <a href="{{ route('login') }}" class="font-medium text-brand-600 hover:text-brand-700">Back to sign in</a>
+                            Need to return? <a href="{{ route('dashboard') }}" class="font-medium text-brand-600 hover:text-brand-700">Back to dashboard</a>
                         </div>
                     </div>
                 </div>

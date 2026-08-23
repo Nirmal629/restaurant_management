@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 
 class AuthenticatedSessionController extends Controller
@@ -32,9 +33,19 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        $user = $request->user();
+        $employee = $user?->employee;
+        if (! $employee || $employee->status !== 'active') {
+            Auth::guard('web')->logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'This staff account is not active.',
+            ]);
+        }
+
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'));
+        return redirect($this->firstAllowedRouteFor($user));
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -45,5 +56,35 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    private function firstAllowedRouteFor($user): string
+    {
+        foreach ($this->sidebarRoutePermissions() as $route => $permission) {
+            if (Route::has($route) && $user->hasPermission($permission[0], $permission[1])) {
+                return route($route);
+            }
+        }
+
+        return route('dashboard');
+    }
+
+    private function sidebarRoutePermissions(): array
+    {
+        return [
+            'pos' => ['POS', 'View'],
+            'tables' => ['Orders', 'View'],
+            'kds' => ['Kitchen', 'View'],
+            'reservations' => ['Orders', 'View'],
+            'customers' => ['Customers', 'View'],
+            'menu' => ['Menu', 'View'],
+            'inventory' => ['Inventory', 'View'],
+            'purchases' => ['Purchases', 'View'],
+            'expenses' => ['Expenses', 'View'],
+            'billing' => ['Billing', 'View'],
+            'reports' => ['Reports', 'View'],
+            'employees' => ['Employees', 'View'],
+            'settings' => ['Settings', 'View'],
+        ];
     }
 }

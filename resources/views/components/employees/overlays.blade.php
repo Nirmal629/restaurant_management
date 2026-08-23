@@ -31,7 +31,8 @@
                 <div class="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
                     <p class="mb-1.5 text-[10px] font-black uppercase tracking-wide text-slate-400">Login Access</p>
                     <div class="grid grid-cols-2 gap-2 text-[11.5px]">
-                        <p class="text-slate-500">Username <span class="block font-bold text-slate-800" x-text="(activeEmployee.email || activeEmployee.phone)"></span></p>
+                        <p class="text-slate-500">Login Email <span class="block font-bold text-slate-800" x-text="activeEmployee.loginEmail || activeEmployee.email"></span></p>
+                        <p class="text-slate-500">Portal Login <span class="block font-bold text-slate-800" x-text="activeEmployee.hasLogin ? 'Enabled' : 'Not enabled'"></span></p>
                         <p class="text-slate-500">POS PIN <span class="block font-bold text-slate-800" x-text="activeEmployee.pinSet ? '•••• (set)' : 'Not set'"></span></p>
                     </div>
                 </div>
@@ -126,7 +127,12 @@
         <div class="grid grid-cols-2 gap-3 p-4">
             <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Name</label><input x-model="draft.name" data-autofocus class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" /></div>
             <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Phone</label><input x-model="draft.phone" inputmode="tel" maxlength="10" class="pos-num h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" /></div>
-            <div class="col-span-2"><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Email</label><input x-model="draft.email" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" /></div>
+            <div class="col-span-2"><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Email</label><input x-model="draft.email" type="email" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" /></div>
+            <div class="col-span-2">
+                <label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600" x-text="draft.id ? 'Reset Login Password' : 'Temporary Login Password'"></label>
+                <input x-model="draft.password" type="password" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" :placeholder="draft.id ? 'Leave blank to keep current password' : 'Default: password'" />
+                <p class="mt-1 text-[10.5px] font-semibold text-slate-400" x-show="!draft.id">If left blank, the employee can log in with password.</p>
+            </div>
             <div class="col-span-2"><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Address</label><textarea x-model="draft.address" rows="2" class="w-full resize-none rounded-md border border-slate-300 bg-white px-2.5 py-2 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none"></textarea></div>
             <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Role</label><select x-model="draft.role" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none"><template x-for="r in roles" :key="r"><option x-text="r"></option></template></select></div>
             <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Shift</label><select x-model="draft.shift" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none"><template x-for="[k,s] in Object.entries(shiftTypes)" :key="k"><option :value="k" x-text="s.label"></option></template></select></div>
@@ -135,7 +141,7 @@
         <x-slot:footer>
             <div class="flex gap-2">
                 <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-                <button type="button" @click="saveEmployee()" :disabled="saving || !draft.name?.trim() || (draft.phone || '').trim().length < 10" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+                <button type="button" @click="saveEmployee()" :disabled="saving || !draft.name?.trim() || !draft.email?.trim() || (draft.phone || '').trim().length < 10" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                     <span x-text="draft.id ? 'Save Changes' : 'Add Employee'"></span>
                 </button>
             </div>

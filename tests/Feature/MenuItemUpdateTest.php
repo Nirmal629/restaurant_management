@@ -6,7 +6,6 @@ use App\Models\KitchenStation;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\ModifierGroup;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,7 +15,7 @@ class MenuItemUpdateTest extends TestCase
 
     public function test_menu_item_can_be_updated_from_the_api(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAsEmployeeWithPermissions([['Menu', 'Edit']]);
 
         $category = MenuCategory::create(['name' => 'Starters', 'display_order' => 1]);
         $station = KitchenStation::create(['name' => 'Main Kitchen']);

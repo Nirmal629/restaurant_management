@@ -8,8 +8,10 @@ use App\Models\Invoice;
 use App\Models\Kot;
 use App\Models\Order;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller
@@ -27,8 +29,15 @@ class EmployeeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $this->validated($request);
+        $password = $data['password'] ?? 'password';
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($password),
+        ]);
 
         $employee = Employee::create([
+            'user_id' => $user->id,
             'employee_code' => $this->nextEmployeeCode(),
             'name' => $data['name'],
             'phone' => $data['phone'],
@@ -44,15 +53,17 @@ class EmployeeController extends Controller
 
         return response()->json([
             'employee' => $this->employeeResource($employee->fresh(['role.permissions', 'branch', 'user'])),
-            'message' => "{$employee->name} added",
+            'message' => "{$employee->name} added. Temporary password: {$password}",
         ], 201);
     }
 
     public function update(Request $request, Employee $employee): JsonResponse
     {
         $data = $this->validated($request, $employee);
+        $user = $this->syncLoginUser($employee, $data);
 
         $employee->update([
+            'user_id' => $user->id,
             'name' => $data['name'],
             'phone' => $data['phone'],
             'email' => $data['email'] ?? null,
@@ -160,6 +171,8 @@ class EmployeeController extends Controller
             'joiningDate' => $employee->joining_date?->toDateString(),
             'shift' => $employee->shift,
             'status' => $employee->status,
+            'hasLogin' => filled($employee->user_id),
+            'loginEmail' => $employee->user?->email ?? $employee->email,
             'pinSet' => filled($employee->pos_pin_hash),
             'activeTables' => $this->activeTables($employee),
             'permissionOverrides' => $employee->permission_overrides ?? [],
@@ -244,12 +257,45 @@ class EmployeeController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:20', Rule::unique('employees', 'phone')->ignore($employee)],
-            'email' => ['nullable', 'email', 'max:255', Rule::unique('employees', 'email')->ignore($employee)],
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('employees', 'email')->ignore($employee),
+                Rule::unique('users', 'email')->ignore($employee?->user_id),
+            ],
             'address' => ['nullable', 'string', 'max:500'],
             'role' => ['required', 'string', 'exists:roles,name'],
             'shift' => ['required', Rule::in(['morning', 'evening', 'fullday'])],
             'joiningDate' => ['nullable', 'date'],
+            'password' => [$employee ? 'sometimes' : 'nullable', 'nullable', 'string', 'min:8'],
         ]);
+    }
+
+    private function syncLoginUser(Employee $employee, array $data): User
+    {
+        $user = $employee->user;
+
+        if (! $user) {
+            return User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password'] ?? 'password'),
+            ]);
+        }
+
+        $updates = [
+            'name' => $data['name'],
+            'email' => $data['email'],
+        ];
+
+        if (filled($data['password'] ?? null)) {
+            $updates['password'] = Hash::make($data['password']);
+        }
+
+        $user->update($updates);
+
+        return $user;
     }
 
     private function nextEmployeeCode(): string

@@ -2,14 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\Branch;
-use App\Models\Employee;
 use App\Models\Ingredient;
 use App\Models\PurchaseOrder;
-use App\Models\Role;
 use App\Models\StockLedgerEntry;
 use App\Models\Supplier;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -19,8 +15,11 @@ class PurchaseWorkflowTest extends TestCase
 
     public function test_purchase_order_can_be_created_approved_and_received(): void
     {
-        [$user] = $this->actingEmployee();
-        $this->actingAs($user);
+        $this->actingAsEmployeeWithPermissions([
+            ['Purchases', 'Create'],
+            ['Purchases', 'Edit'],
+            ['Purchases', 'Approve'],
+        ]);
 
         $supplier = Supplier::create(['name' => 'Bengal Food Supplies', 'status' => 'active']);
         $ingredient = Ingredient::create([
@@ -111,23 +110,5 @@ class PurchaseWorkflowTest extends TestCase
             'type' => 'PURCHASE',
             'change_qty' => 16,
         ]);
-    }
-
-    private function actingEmployee(): array
-    {
-        $user = User::factory()->create();
-        $branch = Branch::create(['code' => 'ICH-01', 'name' => 'Ichapur Main Branch']);
-        $role = Role::create(['name' => 'Restaurant Owner']);
-        $employee = Employee::create([
-            'user_id' => $user->id,
-            'role_id' => $role->id,
-            'branch_id' => $branch->id,
-            'employee_code' => 'EMP-001',
-            'name' => 'Rakesh Singh',
-            'phone' => '9999999999',
-            'status' => 'active',
-        ]);
-
-        return [$user, $employee];
     }
 }

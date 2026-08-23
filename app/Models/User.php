@@ -51,4 +51,15 @@ class User extends Authenticatable
     {
         return $this->hasOne(Employee::class);
     }
+
+    public function hasPermission(string $module, string $action = 'View'): bool
+    {
+        $employee = $this->employee()->with('role.permissions')->first();
+
+        if (! $employee || $employee->status !== 'active') {
+            return false;
+        }
+
+        return in_array($action, $employee->effectivePermissions()[$module] ?? [], true);
+    }
 }

@@ -31,6 +31,23 @@
             ['settings', 'Settings'],
         ],
     ];
+    $routeModules = [
+        'pos' => 'POS',
+        'tables' => 'Orders',
+        'orders' => 'Orders',
+        'kds' => 'Kitchen',
+        'reservations' => 'Orders',
+        'customers' => 'Customers',
+        'menu' => 'Menu',
+        'inventory' => 'Inventory',
+        'purchases' => 'Purchases',
+        'expenses' => 'Expenses',
+        'billing' => 'Billing',
+        'reports' => 'Reports',
+        'employees' => 'Employees',
+        'settings' => 'Settings',
+    ];
+    $user = auth()->user();
 @endphp
 
 <aside class="adm-sidebar border-r border-slate-800 bg-slate-900 text-slate-100">
@@ -47,6 +64,7 @@
             <p class="mb-1.5 mt-3 px-2 text-[9.5px] font-black uppercase tracking-[0.1em] text-slate-500 first:mt-0 max-[1279px]:hidden">{{ $label }}</p>
             <div class="mb-1 space-y-0.5">
                 @foreach ($items as [$route, $label2])
+                    @continue($route !== 'dashboard' && isset($routeModules[$route]) && ! $user?->hasPermission($routeModules[$route], 'View'))
                     <a href="{{ Route::has($route) ? route($route) : '#' }}"
                        @class([
                            'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold transition-colors max-[1279px]:justify-center',
