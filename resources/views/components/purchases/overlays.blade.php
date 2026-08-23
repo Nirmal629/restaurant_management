@@ -1,5 +1,5 @@
 {{-- PO Detail --}}
-<x-pos.dialog name="poDetail" variant="drawer" width="max-w-lg" title="Purchase Order" :subtitle="null">
+<x-pos.dialog name="poDetail" variant="drawer" width="max-w-lg" title="Purchase Order" :subtitle="null" close="all">
     <template x-if="activeOrder">
         <div>
             <div class="border-b border-slate-200 bg-white px-4 py-3">
@@ -38,6 +38,7 @@
                 <button type="button" x-show="activeOrder.status === 'approved'" @click="markOrdered(activeOrder)" class="col-span-2 h-9 rounded-md bg-violet-600 text-[11.5px] font-bold uppercase tracking-wide text-white hover:bg-violet-500">Mark Ordered</button>
                 <button type="button" x-show="['ordered','partially_received'].includes(activeOrder.status)" @click="openReceiveGoods(activeOrder)" class="col-span-2 h-9 rounded-md bg-emerald-600 text-[11.5px] font-bold uppercase tracking-wide text-white hover:bg-emerald-500">Receive Goods</button>
                 <button type="button" x-show="!['received','cancelled'].includes(activeOrder.status)" @click="cancelPO(activeOrder)" class="col-span-2 h-9 rounded-md border border-rose-300 bg-white text-[11.5px] font-bold text-rose-600 hover:bg-rose-50">Cancel Order</button>
+                <button type="button" @click="deletePO(activeOrder)" class="col-span-2 h-9 rounded-md border border-rose-300 bg-white text-[11.5px] font-bold text-rose-600 hover:bg-rose-50">Delete Order</button>
             </div>
         </template>
     </x-slot:footer>
@@ -45,7 +46,7 @@
 
 
 {{-- Create PO --}}
-<x-pos.dialog name="poForm" width="max-w-2xl" title="New Purchase Order">
+<x-pos.dialog name="poForm" width="max-w-2xl" title="New Purchase Order" close="all">
     <div class="space-y-3 p-4">
         <div class="grid grid-cols-2 gap-3">
             <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Supplier</label><select x-model="poDraft.supplier" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none"><template x-for="s in suppliers" :key="s.id"><option :value="s.name" x-text="s.name"></option></template></select></div>
@@ -82,15 +83,15 @@
     </div>
     <x-slot:footer>
         <div class="flex gap-2">
-            <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="savePO()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800">Save Draft</button>
+            <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
+            <button type="button" @click="savePO()" :disabled="saving" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Draft</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
 
 
 {{-- Approve --}}
-<x-pos.dialog name="approve" width="max-w-sm" title="Approve Purchase Order" tone="dark">
+<x-pos.dialog name="approve" width="max-w-sm" title="Approve Purchase Order" tone="dark" close="all">
     <template x-if="activeOrder">
         <div class="space-y-3 p-4">
             <p class="text-[13px] text-slate-700">Approve <span class="pos-num font-black text-slate-900" x-text="activeOrder.id"></span> for <span class="font-bold text-slate-900" x-text="money(poTotal(activeOrder))"></span>?</p>
@@ -99,15 +100,15 @@
     </template>
     <x-slot:footer>
         <div class="flex gap-2">
-            <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="confirmApprove()" class="h-10 flex-1 rounded-md bg-sky-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-sky-500">Approve</button>
+            <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
+            <button type="button" @click="confirmApprove()" :disabled="saving" class="h-10 flex-1 rounded-md bg-sky-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300">Approve</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
 
 
 {{-- Receive goods --}}
-<x-pos.dialog name="grnForm" width="max-w-2xl" title="Goods Receipt">
+<x-pos.dialog name="grnForm" width="max-w-2xl" title="Goods Receipt" close="all">
     <div class="space-y-3 p-4">
         <div class="grid grid-cols-3 gap-3">
             <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5"><p class="text-[9.5px] font-black uppercase text-slate-400">PO Reference</p><p class="pos-num text-[12.5px] font-bold text-slate-900" x-text="grnDraft.poRef"></p></div>
@@ -134,15 +135,15 @@
     </div>
     <x-slot:footer>
         <div class="flex gap-2">
-            <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveGRN()" :disabled="!grnDraft.invoiceNumber?.trim()" class="h-10 flex-1 rounded-md bg-emerald-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300">Save Receipt</button>
+            <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
+            <button type="button" @click="saveGRN()" :disabled="saving || !grnDraft.invoiceNumber?.trim()" class="h-10 flex-1 rounded-md bg-emerald-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300">Save Receipt</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
 
 
 {{-- GRN detail --}}
-<x-pos.dialog name="grnDetail" width="max-w-lg" title="Goods Receipt Detail" :subtitle="null">
+<x-pos.dialog name="grnDetail" width="max-w-lg" title="Goods Receipt Detail" :subtitle="null" close="all">
     <template x-if="activeGrn">
         <div class="p-4">
             <div class="mb-3 grid grid-cols-2 gap-2">
@@ -159,11 +160,16 @@
             </div>
         </div>
     </template>
+    <x-slot:footer>
+        <template x-if="activeGrn">
+            <button type="button" @click="deleteGRN(activeGrn)" class="h-9 w-full rounded-md border border-rose-300 bg-white text-[11.5px] font-bold text-rose-600 hover:bg-rose-50">Delete Receipt</button>
+        </template>
+    </x-slot:footer>
 </x-pos.dialog>
 
 
 {{-- Supplier detail --}}
-<x-pos.dialog name="supplierDetail" variant="drawer" width="max-w-md" title="Supplier" :subtitle="null">
+<x-pos.dialog name="supplierDetail" variant="drawer" width="max-w-md" title="Supplier" :subtitle="null" close="all">
     <template x-if="activeSupplier">
         <div>
             <div class="border-b border-slate-200 bg-white px-4 py-3">

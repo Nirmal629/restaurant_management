@@ -1,4 +1,5 @@
 {{-- Create / Edit Menu Item --}}
+<div x-show="showItemForm" x-cloak>
 <x-pos.dialog name="itemForm" width="max-w-2xl" title="Menu Item">
     <div class="grid grid-cols-2 gap-3 p-4">
         <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Item Name</label><input x-model="itemDraft.name" data-autofocus class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" /></div>
@@ -72,15 +73,17 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveItem()" :disabled="!itemDraft.name?.trim() || !itemDraft.sku?.trim() || !itemDraft.price" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+            <button type="button" @click="saveItem()" :disabled="saving || !itemDraft.name?.trim() || !itemDraft.sku?.trim() || !itemDraft.price" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-text="itemDraft.id ? 'Save Changes' : 'Add Item'"></span>
             </button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</div>
 
 
 {{-- View item (variants/modifiers read-only) --}}
+<div x-show="showItemView" x-cloak>
 <x-pos.dialog name="itemView" width="max-w-md" title="Item Details" :subtitle="null">
     <template x-if="activeItem">
         <div class="space-y-3 p-4">
@@ -102,22 +105,32 @@
             </div>
         </div>
     </template>
+    <x-slot:footer>
+        <div class="flex gap-2">
+            <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Close</button>
+            <button type="button" @click="openItemForm(activeItem)" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800">Edit Item</button>
+        </div>
+    </x-slot:footer>
 </x-pos.dialog>
+</div>
 
 
 {{-- Category --}}
+<div x-show="showCategoryForm" x-cloak>
 <x-pos.dialog name="categoryForm" width="max-w-sm" title="Category">
     <div class="p-4"><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Name</label><input x-model="categoryDraft.label" data-autofocus class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" /></div>
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveCategory()" :disabled="!categoryDraft.label?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
+            <button type="button" @click="saveCategory()" :disabled="saving || !categoryDraft.label?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</div>
 
 
 {{-- Modifier group --}}
+<div x-show="showModifierForm" x-cloak>
 <x-pos.dialog name="modifierForm" width="max-w-lg" title="Modifier Group">
     <div class="space-y-3 p-4">
         <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Group Name</label><input x-model="modifierDraft.label" data-autofocus class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" /></div>
@@ -156,13 +169,15 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveModifier()" :disabled="!modifierDraft.label?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
+            <button type="button" @click="saveModifier()" :disabled="saving || !modifierDraft.label?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</div>
 
 
 {{-- Combo builder --}}
+<div x-show="showComboForm" x-cloak>
 <x-pos.dialog name="comboForm" width="max-w-lg" title="Combo Builder">
     <div class="space-y-3 p-4">
         <div class="grid grid-cols-2 gap-3">
@@ -191,7 +206,8 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveCombo()" :disabled="!comboDraft.name?.trim() || !comboDraft.price" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Combo</button>
+            <button type="button" @click="saveCombo()" :disabled="saving || !comboDraft.name?.trim() || !comboDraft.price" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Combo</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</div>

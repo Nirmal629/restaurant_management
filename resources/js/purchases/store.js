@@ -1,19 +1,22 @@
 import { overlayMixin, paginationMixin, money } from '../shared/kit.js';
-import { APPROVAL_REASONS, GOODS_RECEIPTS, OPERATOR, PURCHASE_ORDERS, SUPPLIERS, VENUE } from './demo-data.js';
+
+const boot = window.purchaseModule || {};
+const routeConfig = window.purchaseRoutes || {};
 
 export default function purchasesApp() {
     return {
         ...overlayMixin(),
         ...paginationMixin(8),
-        venue: VENUE,
-        operator: OPERATOR,
-        approvalReasons: APPROVAL_REASONS,
+        venue: boot.venue || { name: 'Restaurant', branch: 'Main Branch' },
+        operator: boot.operator || { name: 'System' },
+        approvalReasons: boot.approvalReasons || [],
+        routes: routeConfig,
         money,
 
-        tab: 'po', // po | grn | suppliers
-        orders: PURCHASE_ORDERS.map((o) => ({ ...o, items: o.items.map((i) => ({ ...i })) })),
-        receipts: GOODS_RECEIPTS.map((g) => ({ ...g, items: g.items.map((i) => ({ ...i })) })),
-        suppliers: SUPPLIERS.map((s) => ({ ...s, items: [...s.items] })),
+        tab: 'po',
+        orders: (boot.orders || []).map((o) => ({ ...o, items: (o.items || []).map((i) => ({ ...i })) })),
+        receipts: (boot.receipts || []).map((g) => ({ ...g, items: (g.items || []).map((i) => ({ ...i })) })),
+        suppliers: (boot.suppliers || []).map((s) => ({ ...s, items: [...(s.items || [])] })),
 
         query: '',
         statusFilter: 'all',
@@ -22,6 +25,20 @@ export default function purchasesApp() {
         approvalDraft: {},
         poDraft: {},
         grnDraft: {},
+        saving: false,
+
+        init() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('ingredient')) {
+                this.openCreatePO();
+                Object.assign(this.poDraft.items[0], {
+                    ingredient: params.get('ingredient') || '',
+                    qty: params.get('qty') || '',
+                    unit: params.get('unit') || 'KG',
+                });
+                this.poDraft.supplier = params.get('supplier') || this.poDraft.supplier;
+            }
+        },
 
         statusLabel(s) {
             return { draft: 'Draft', approval_pending: 'Approval Pending', approved: 'Approved', ordered: 'Ordered', partially_received: 'Partially Received', received: 'Received', cancelled: 'Cancelled' }[s] || s;
@@ -39,16 +56,16 @@ export default function purchasesApp() {
         },
 
         lineAmount(l) {
-            return l.qty * l.rate * (1 + (l.tax || 0) / 100);
+            return Number(l.qty || 0) * Number(l.rate || 0) * (1 + Number(l.tax || 0) / 100);
         },
         poSubtotal(o) {
-            return o.items.reduce((s, l) => s + l.qty * l.rate, 0);
+            return (o.items || []).reduce((s, l) => s + Number(l.qty || 0) * Number(l.rate || 0), 0);
         },
         poTax(o) {
-            return o.items.reduce((s, l) => s + l.qty * l.rate * ((l.tax || 0) / 100), 0);
+            return (o.items || []).reduce((s, l) => s + Number(l.qty || 0) * Number(l.rate || 0) * (Number(l.tax || 0) / 100), 0);
         },
         poTotal(o) {
-            return Math.round(this.poSubtotal(o) + this.poTax(o) - (o.discount || 0) + (o.otherCharges || 0));
+            return Math.round(this.poSubtotal(o) + this.poTax(o) - Number(o.discount || 0) + Number(o.otherCharges || 0));
         },
 
         order(id) {
@@ -81,103 +98,145 @@ export default function purchasesApp() {
                 open: this.orders.filter((o) => !['received', 'cancelled'].includes(o.status)).length,
                 pendingApproval: this.orders.filter((o) => o.status === 'approval_pending').length,
                 value: this.orders.filter((o) => !['cancelled'].includes(o.status)).reduce((s, o) => s + this.poTotal(o), 0),
-                outstanding: this.suppliers.reduce((s, sup) => s + sup.outstanding, 0),
+                outstanding: this.suppliers.reduce((s, sup) => s + Number(sup.outstanding || 0), 0),
             };
         },
 
         openDetail(o) {
             this.openRowMenu = null;
             this.activeId = o.id;
-            this.open('poDetail');
+            this.openOnly('poDetail');
         },
         openCreatePO() {
             this.openRowMenu = null;
-            this.poDraft = { supplier: this.suppliers[0]?.name, expectedDelivery: '', reference: '', notes: '', items: [{ ingredient: '', currentStock: 0, qty: '', unit: 'KG', rate: '', tax: 0 }], discount: 0, otherCharges: 0 };
-            this.open('poForm');
+            this.activeId = null;
+            this.poDraft = { supplier: this.suppliers[0]?.name || '', expectedDelivery: '', reference: '', notes: '', items: [{ ingredient: '', currentStock: 0, qty: '', unit: 'KG', rate: '', tax: 0 }], discount: 0, otherCharges: 0 };
+            this.openOnly('poForm');
         },
         addPoLine() {
             this.poDraft.items.push({ ingredient: '', currentStock: 0, qty: '', unit: 'KG', rate: '', tax: 0 });
         },
         removePoLine(i) {
-            this.poDraft.items.splice(i, 1);
+            if (this.poDraft.items.length > 1) this.poDraft.items.splice(i, 1);
         },
         get poDraftSubtotal() {
             return this.poDraft.items.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.rate) || 0), 0);
         },
         get poDraftTax() {
-            return this.poDraft.items.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.rate) || 0) * ((l.tax || 0) / 100), 0);
+            return this.poDraft.items.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.rate) || 0) * ((Number(l.tax) || 0) / 100), 0);
         },
         get poDraftTotal() {
             return Math.round(this.poDraftSubtotal + this.poDraftTax - (Number(this.poDraft.discount) || 0) + (Number(this.poDraft.otherCharges) || 0));
         },
-        savePO() {
+        async savePO() {
             const d = this.poDraft;
-            if (!d.supplier || !d.items.length || d.items.some((l) => !l.ingredient || !l.qty)) return;
-            this.orders.unshift({ ...d, id: 'PO-2026-' + (85 + this.orders.length), date: '23/08/2026', status: 'draft', createdBy: this.operator.name, approvedBy: null });
-            this.closeAll();
-            this.notify('Purchase order saved as draft', 'success');
+            if (!d.supplier || !d.items.length || d.items.some((l) => !l.ingredient || !Number(l.qty))) return;
+            this.saving = true;
+            try {
+                const response = await this.request(this.routes.orders, 'POST', d);
+                this.upsertOrder(response.order);
+                this.closeAll();
+                this.notify(response.message || 'Purchase order saved', 'success');
+            } catch (error) {
+                this.notify(error.message || 'Could not save purchase order', 'error');
+            } finally {
+                this.saving = false;
+            }
         },
 
         requestApproval(o) {
-            this.openRowMenu = null;
-            o.status = 'approval_pending';
-            this.notify(`${o.id} submitted for approval`);
+            return this.changeOrderStatus(o, 'approval_pending');
         },
         openApprove(o) {
             this.openRowMenu = null;
             this.activeId = o.id;
             this.approvalDraft = { reason: '' };
-            this.open('approve');
+            this.openOnly('approve');
         },
         confirmApprove() {
             const o = this.activeOrder;
             if (!o) return;
-            o.status = 'approved';
-            o.approvedBy = 'Rakesh Singh';
-            this.closeAll();
-            this.notify(`${o.id} approved`, 'success');
+            return this.changeOrderStatus(o, 'approved');
         },
         markOrdered(o) {
-            this.openRowMenu = null;
-            o.status = 'ordered';
-            this.notify(`${o.id} marked as ordered with supplier`);
+            return this.changeOrderStatus(o, 'ordered');
         },
         cancelPO(o) {
+            return this.changeOrderStatus(o, 'cancelled');
+        },
+        async changeOrderStatus(o, status) {
             this.openRowMenu = null;
-            o.status = 'cancelled';
-            this.notify(`${o.id} cancelled`, 'warn');
+            this.saving = true;
+            try {
+                const response = await this.request(`${this.routes.orders}/${o.dbId}/status`, 'PATCH', { status });
+                this.upsertOrder(response.order);
+                this.closeAll();
+                this.notify(response.message || 'Purchase order updated', status === 'cancelled' ? 'warn' : 'success');
+            } catch (error) {
+                this.notify(error.message || 'Could not update purchase order', 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+        async deletePO(o) {
+            this.openRowMenu = null;
+            if (!window.confirm(`Delete ${o.id}?`)) return;
+            try {
+                const response = await this.request(`${this.routes.orders}/${o.dbId}`, 'DELETE');
+                this.orders = response.orders || this.orders.filter((x) => x.id !== o.id);
+                this.closeAll();
+                this.notify(response.message || 'Purchase order deleted', 'success');
+            } catch (error) {
+                this.notify(error.message || 'Could not delete purchase order', 'error');
+            }
         },
 
-        /* GRN */
         openReceiveGoods(o) {
             this.openRowMenu = null;
-            this.grnDraft = { poRef: o.id, supplier: o.supplier, invoiceNumber: '', receivedDate: '23/08/2026', items: o.items.map((l) => ({ ingredient: l.ingredient, ordered: l.qty, prevReceived: 0, receivedNow: l.qty, rejected: 0 })) };
-            this.open('grnForm');
+            this.activeId = o.id;
+            this.grnDraft = { poRef: o.id, supplier: o.supplier, invoiceNumber: '', receivedDate: new Date().toISOString().slice(0, 10), items: (o.items || []).map((l) => ({ ingredient: l.ingredient, ordered: l.qty, prevReceived: l.prevReceived || 0, receivedNow: Math.max(0, Number(l.qty || 0) - Number(l.prevReceived || 0)), rejected: 0 })) };
+            this.openOnly('grnForm');
         },
         acceptedQty(l) {
-            return Math.max(0, l.receivedNow - l.rejected);
+            return Math.max(0, Number(l.receivedNow || 0) - Number(l.rejected || 0));
         },
-        saveGRN() {
+        async saveGRN() {
             const d = this.grnDraft;
-            if (!d.invoiceNumber.trim()) return;
-            this.receipts.unshift({ ...d, id: 'GRN-2026-' + (43 + this.receipts.length) });
-            const o = this.orders.find((x) => x.id === d.poRef);
-            if (o) {
-                const fullyReceived = d.items.every((l) => l.receivedNow + l.prevReceived >= l.ordered);
-                o.status = fullyReceived ? 'received' : 'partially_received';
+            if (!d.invoiceNumber?.trim()) return;
+            this.saving = true;
+            try {
+                const response = await this.request(this.routes.receipts, 'POST', d);
+                this.receipts.unshift(response.receipt);
+                this.orders = response.orders || this.orders;
+                this.closeAll();
+                this.notify(response.message || 'Goods receipt recorded', 'success');
+            } catch (error) {
+                this.notify(error.message || 'Could not save goods receipt', 'error');
+            } finally {
+                this.saving = false;
             }
-            this.closeAll();
-            this.notify('Goods receipt recorded — inventory updated', 'success');
         },
         openGrnDetail(g) {
+            this.openRowMenu = null;
             this.activeId = g.id;
-            this.open('grnDetail');
+            this.openOnly('grnDetail');
         },
         get activeGrn() {
             return this.receipts.find((g) => g.id === this.activeId);
         },
+        async deleteGRN(g) {
+            if (!window.confirm(`Delete ${g.id}?`)) return;
+            try {
+                const response = await this.request(`${this.routes.receipts}/${g.dbId}`, 'DELETE');
+                this.receipts = response.receipts || this.receipts.filter((x) => x.id !== g.id);
+                this.orders = response.orders || this.orders;
+                this.closeAll();
+                this.notify(response.message || 'Goods receipt deleted', 'success');
+            } catch (error) {
+                this.notify(error.message || 'Could not delete goods receipt', 'error');
+            }
+        },
 
-        /* Suppliers */
         supplier(id) {
             return this.suppliers.find((s) => s.id === id);
         },
@@ -185,11 +244,34 @@ export default function purchasesApp() {
             return this.supplier(this.activeId);
         },
         openSupplierDetail(s) {
+            this.openRowMenu = null;
             this.activeId = s.id;
-            this.open('supplierDetail');
+            this.openOnly('supplierDetail');
         },
         supplierHistory(name) {
             return this.orders.filter((o) => o.supplier === name);
+        },
+        upsertOrder(order) {
+            const index = this.orders.findIndex((o) => o.id === order.id);
+            if (index === -1) this.orders.unshift(order);
+            else this.orders.splice(index, 1, order);
+        },
+        printPurchases() {
+            window.print();
+        },
+        async request(url, method, body = null) {
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+                body: body ? JSON.stringify(body) : null,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.message || Object.values(data.errors || {})[0]?.[0] || 'Request failed');
+            return data;
         },
     };
 }

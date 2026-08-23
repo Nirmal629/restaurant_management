@@ -2,17 +2,26 @@ import { overlayMixin, paginationMixin, money, formatDate, initials } from '../s
 import { CUSTOMERS, DISCOUNT_LOG, OPERATOR, TAGS, VENUE } from './demo-data.js';
 
 export default function customersApp() {
+    const boot = window.customerModule || {};
+    const routes = window.customerRoutes || {};
+    const normalize = (customer) => ({
+        ...customer,
+        tags: [...(customer.tags || [])],
+        favoriteItems: [...(customer.favoriteItems || [])],
+        recentOrders: [...(customer.recentOrders || [])],
+    });
+
     return {
         ...overlayMixin(),
         ...paginationMixin(10),
-        venue: VENUE,
+        venue: boot.venue || VENUE,
         operator: OPERATOR,
-        tags: TAGS,
+        tags: boot.tags || TAGS,
         money,
         formatDate,
         initials,
 
-        customers: CUSTOMERS.map((c) => ({ ...c, tags: [...c.tags], favoriteItems: [...c.favoriteItems], recentOrders: [...c.recentOrders] })),
+        customers: (boot.customers || CUSTOMERS).map(normalize),
         discountLog: DISCOUNT_LOG,
         loading: false,
         query: '',
@@ -20,13 +29,57 @@ export default function customersApp() {
         openRowMenu: null,
         activeId: null,
         activeTab: 'overview',
+        showProfile: false,
+        showForm: false,
+        showLoyalty: false,
+        showNote: false,
+        saving: false,
+        profileOpenArmed: false,
         draft: {},
         loyaltyDraft: { points: '', reason: '' },
         noteDraft: '',
 
         init() {
             this.loading = true;
+            this.sortCustomers();
             setTimeout(() => (this.loading = false), 500);
+        },
+        open(name) {
+            this.stack = this.stack.filter((item) => item !== name);
+            this.stack.push(name);
+            this.syncOverlayFlags();
+            this.$nextTick(() => this.focusFirst());
+        },
+        swap(name) {
+            if (this.stack.length) this.stack.pop();
+            this.open(name);
+        },
+        back() {
+            const current = this.overlay;
+            this.stack = current ? this.stack.filter((item) => item !== current) : [];
+            this.cleanupOverlayState();
+        },
+        closeAll() {
+            this.stack = [];
+            this.cleanupOverlayState();
+        },
+        syncOverlayFlags() {
+            this.showProfile = this.stack.includes('profile');
+            this.showForm = this.stack.includes('form');
+            this.showLoyalty = this.stack.includes('loyalty');
+            this.showNote = this.stack.includes('note');
+        },
+        cleanupOverlayState() {
+            this.syncOverlayFlags();
+            if (!this.showProfile && !this.showLoyalty && !this.showNote && !this.showForm) {
+                this.activeId = null;
+                this.activeTab = 'overview';
+            }
+            if (!this.showForm) this.draft = {};
+            if (!this.showLoyalty) this.loyaltyDraft = { points: '', reason: '' };
+            if (!this.showNote) this.noteDraft = '';
+            this.openRowMenu = null;
+            this.profileOpenArmed = false;
         },
 
         customer(id) {
@@ -58,7 +111,7 @@ export default function customersApp() {
                 const q = this.query.trim().toLowerCase();
                 list = list.filter((c) => [c.name, c.phone, c.email].join(' ').toLowerCase().includes(q));
             }
-            return list.sort((a, b) => b.spend - a.spend);
+            return list.sort((a, b) => Number(b.id) - Number(a.id));
         },
         get paged() {
             return this.pageSlice(this.filtered);
@@ -78,67 +131,156 @@ export default function customersApp() {
             };
         },
 
-        openProfile(c) {
+        armProfileOpen() {
+            if (!this.overlay) this.profileOpenArmed = true;
+        },
+        openProfile(c, force = false) {
+            if (!force && !this.profileOpenArmed) return;
+            if (this.overlay && this.overlay !== 'profile') return;
+            this.profileOpenArmed = false;
             this.openRowMenu = null;
             this.activeId = c.id;
             this.activeTab = 'overview';
-            this.open('profile');
+            this.stack = ['profile'];
+            this.syncOverlayFlags();
         },
         openCreate() {
             this.openRowMenu = null;
+            this.activeId = null;
+            this.activeTab = 'overview';
+            this.profileOpenArmed = false;
             this.draft = { id: null, name: '', phone: '', email: '', birthday: '', anniversary: '', address: '', gstin: '', tags: [] };
-            this.open('form');
+            this.stack = ['form'];
+            this.syncOverlayFlags();
+            this.$nextTick(() => this.focusFirst());
         },
         openEdit(c) {
             this.openRowMenu = null;
-            this.draft = { id: c.id, name: c.name, phone: c.phone, email: c.email, birthday: c.birthday, anniversary: c.anniversary, address: c.address, gstin: c.gstin, tags: [...c.tags] };
-            this.swap('form');
+            this.profileOpenArmed = false;
+            this.draft = { id: c.id, name: c.name, phone: c.phone, email: c.email, birthday: c.birthday, anniversary: c.anniversary, address: c.address, gstin: c.gstin, tags: [...(c.tags || [])] };
+            this.stack = ['form'];
+            this.syncOverlayFlags();
+            this.$nextTick(() => this.focusFirst());
         },
         toggleDraftTag(t) {
             const i = this.draft.tags.indexOf(t);
             i === -1 ? this.draft.tags.push(t) : this.draft.tags.splice(i, 1);
         },
-        saveCustomer() {
+        async saveCustomer() {
             const d = this.draft;
             if (!d.name.trim() || d.phone.trim().length < 10) return;
-            if (d.id) {
-                Object.assign(this.customer(d.id), d);
-                this.notify(`${d.name} updated`, 'success');
-            } else {
-                this.customers.unshift({
-                    ...d, id: 'C' + (this.customers.length + 100), visits: 0, spend: 0, avgBill: 0, lastVisit: '—', points: 0, vip: false,
-                    favoriteItems: [], recentOrders: [], reservationsCount: 0, notes: '', allergies: '', joinedDate: new Date().toISOString().slice(0, 10),
-                });
-                this.notify(`${d.name} added`, 'success');
-            }
+
+            const result = await this.request(d.id ? `${routes.update}/${d.id}` : routes.store, {
+                method: d.id ? 'PUT' : 'POST',
+                body: JSON.stringify({
+                    name: d.name,
+                    phone: d.phone,
+                    email: d.email || null,
+                    birthday: d.birthday || null,
+                    anniversary: d.anniversary || null,
+                    address: d.address || null,
+                    gstin: d.gstin || null,
+                    tags: d.tags || [],
+                }),
+            });
+            if (!result) return;
+
+            if (d.id) this.replaceCustomer(result.customer);
+            else this.customers.unshift(normalize(result.customer));
+
+            this.sortCustomers();
+            this.clearFilters();
+            this.notify(result.message || `${d.name} saved`, 'success');
             this.closeAll();
         },
-        toggleVip(c) {
-            c.vip = !c.vip;
-            this.notify(c.vip ? `${c.name} marked VIP` : `${c.name} removed from VIP`);
+        async toggleVip(c) {
+            const result = await this.request(`${routes.update}/${c.id}/vip`, { method: 'PATCH' });
+            if (!result) return;
+            this.replaceCustomer(result.customer);
+            this.notify(result.message || 'VIP updated', 'success');
         },
 
         openLoyalty(c) {
+            this.activeId = c.id;
             this.loyaltyDraft = { points: '', reason: '' };
-            this.swap('loyalty');
+            this.stack = ['profile', 'loyalty'];
+            this.syncOverlayFlags();
+            this.$nextTick(() => this.focusFirst());
         },
-        applyLoyaltyAdjust(c) {
+        async applyLoyaltyAdjust(c) {
             const p = Number(this.loyaltyDraft.points);
             if (!p || !this.loyaltyDraft.reason) return;
-            c.points = Math.max(0, c.points + p);
-            (this.discountLog[c.id] ||= []).unshift({ at: this.formatDate(new Date()), text: `Manual adjustment: ${p > 0 ? '+' : ''}${p} pts — ${this.loyaltyDraft.reason}` });
-            this.closeAll();
-            this.notify(`Loyalty points ${p > 0 ? 'added' : 'deducted'} for ${c.name}`, 'success');
+
+            const result = await this.request(`${routes.update}/${c.id}/loyalty`, {
+                method: 'PATCH',
+                body: JSON.stringify({ points: p, reason: this.loyaltyDraft.reason }),
+            });
+            if (!result) return;
+
+            this.replaceCustomer(result.customer);
+            (this.discountLog[c.id] ||= []).unshift(result.log);
+            this.stack = ['profile'];
+            this.cleanupOverlayState();
+            this.notify(result.message || `Loyalty points updated for ${c.name}`, 'success');
         },
 
         openNote(c) {
+            this.activeId = c.id;
             this.noteDraft = c.notes || '';
-            this.swap('note');
+            this.stack = ['profile', 'note'];
+            this.syncOverlayFlags();
+            this.$nextTick(() => this.focusFirst());
         },
-        saveNote(c) {
-            c.notes = this.noteDraft;
-            this.closeAll();
-            this.notify('Note saved', 'success');
+        async saveNote(c) {
+            const result = await this.request(`${routes.update}/${c.id}/note`, {
+                method: 'PATCH',
+                body: JSON.stringify({ notes: this.noteDraft || null }),
+            });
+            if (!result) return;
+
+            this.replaceCustomer(result.customer);
+            this.stack = ['profile'];
+            this.cleanupOverlayState();
+            this.notify(result.message || 'Note saved', 'success');
+        },
+
+        replaceCustomer(customer) {
+            const next = normalize(customer);
+            const index = this.customers.findIndex((c) => c.id === next.id);
+            if (index >= 0) this.customers.splice(index, 1, next);
+            else this.customers.unshift(next);
+        },
+        sortCustomers() {
+            this.customers.sort((a, b) => Number(b.id) - Number(a.id));
+        },
+        async request(url, options = {}) {
+            if (!url || this.saving) return null;
+            this.saving = true;
+
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        ...(options.headers || {}),
+                    },
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const firstError = data.errors ? Object.values(data.errors).flat()[0] : null;
+                    this.notify(firstError || data.message || 'Customer update failed', 'warn');
+                    return null;
+                }
+
+                return data;
+            } catch (error) {
+                this.notify('Network error while saving customer', 'warn');
+                return null;
+            } finally {
+                this.saving = false;
+            }
         },
     };
 }

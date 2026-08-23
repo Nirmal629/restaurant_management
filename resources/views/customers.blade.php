@@ -3,8 +3,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Customers · Royal Bengal Restaurant</title>
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/admin.css', 'resources/js/customers.js'])
+    <script>
+        window.customerModule = @json($customerModule);
+        window.customerRoutes = {
+            data: @json(route('customers.data')),
+            store: @json(route('customers.store')),
+            update: @json(url('/customers')),
+        };
+    </script>
 </head>
 <body x-data="customersApp" x-cloak class="adm-root adm-shell bg-slate-100 text-slate-900 antialiased">
 
@@ -45,7 +54,7 @@
                 <thead><tr><th>Customer</th><th>Phone</th><th>Visits</th><th>Total Spend</th><th>Avg Bill</th><th>Last Visit</th><th>Loyalty</th><th></th></tr></thead>
                 <tbody>
                     <template x-for="c in paged" :key="c.id">
-                        <tr class="adm-row-clickable" @click="openProfile(c)">
+                        <tr class="adm-row-clickable" @pointerdown="armProfileOpen()" @click="openProfile(c)">
                             <td>
                                 <div class="flex items-center gap-2">
                                     <x-admin.avatar initials-expr="initials(c.name)" size="sm" />
@@ -62,7 +71,7 @@
                             <td class="pos-num font-bold text-emerald-700" x-text="c.points + ' pts'"></td>
                             <td @click.stop>
                                 <x-admin.action-menu id-expr="c.id">
-                                    <button type="button" @click="openProfile(c)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">View Profile</button>
+                                    <button type="button" @click="openProfile(c, true)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">View Profile</button>
                                     <button type="button" @click="openEdit(c)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Edit</button>
                                     <button type="button" @click="toggleVip(c)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50" x-text="c.vip ? 'Unmark VIP' : 'Mark VIP'"></button>
                                     <a href="{{ route('reservations') }}" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Create Reservation</a>

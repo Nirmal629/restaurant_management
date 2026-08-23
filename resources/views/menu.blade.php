@@ -3,8 +3,19 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Menu · Royal Bengal Restaurant</title>
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/admin.css', 'resources/js/menu.js'])
+    <script>
+        window.menuModule = @json($menuModule);
+        window.menuRoutes = {
+            data: @json(route('menu.data')),
+            items: @json(url('/menu/items')),
+            categories: @json(url('/menu/categories')),
+            modifiers: @json(url('/menu/modifiers')),
+            combos: @json(url('/menu/combos')),
+        };
+    </script>
 </head>
 <body x-data="menuApp" x-cloak class="adm-root adm-shell bg-slate-100 text-slate-900 antialiased">
 
@@ -42,14 +53,14 @@
                         <thead><tr><th>Item</th><th>Category</th><th>Type</th><th>Price</th><th>Station</th><th>Prep</th><th>Availability</th><th></th></tr></thead>
                         <tbody>
                             <template x-for="i in pagedItems" :key="i.id">
-                                <tr>
+                                <tr class="adm-row-clickable" @click="openViewItem(i)">
                                     <td><p class="font-bold text-slate-900" x-text="i.name"></p><p class="pos-num text-[10.5px] font-semibold text-slate-400" x-text="i.sku"></p></td>
                                     <td class="text-slate-600" x-text="categoryLabel(i.category)"></td>
                                     <td><x-pos.diet-mark expr="i.dietType" /></td>
                                     <td class="pos-num font-bold text-slate-900" x-text="money(i.price)"></td>
                                     <td class="text-slate-600" x-text="stationLabel(i.station)"></td>
                                     <td class="pos-num text-slate-500" x-text="i.prepTime + 'm'"></td>
-                                    <td><button type="button" @click="cycleAvailability(i)"><x-admin.badge expr="i.availability" class-expr="availabilityClass(i.availability)" label-expr="availabilityLabel(i.availability)" /></button></td>
+                                    <td @click.stop><button type="button" @click="cycleAvailability(i)"><x-admin.badge expr="i.availability" class-expr="availabilityClass(i.availability)" label-expr="availabilityLabel(i.availability)" /></button></td>
                                     <td @click.stop>
                                         <x-admin.action-menu id-expr="i.id">
                                             <button type="button" @click="openItemForm(i)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Edit</button>

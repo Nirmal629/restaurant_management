@@ -3,7 +3,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Purchases · Royal Bengal Restaurant</title>
+    <script>
+        window.purchaseModule = @json($purchaseModule);
+        window.purchaseRoutes = {
+            data: @json(route('purchases.data')),
+            orders: @json(url('/purchases/orders')),
+            receipts: @json(url('/purchases/receipts')),
+            export: @json(route('purchases.export')),
+        };
+    </script>
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/admin.css', 'resources/js/purchases.js'])
 </head>
 <body x-data="purchasesApp" x-cloak class="adm-root adm-shell bg-slate-100 text-slate-900 antialiased">
@@ -12,7 +22,11 @@
 
     <div class="adm-main">
         <x-admin.page-header title="Purchases" subtitle="Ichapur Main Branch">
-            <template x-if="tab === 'po'"><button type="button" @click="openCreatePO()" class="flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800"><x-pos.icon name="plus" class="h-3.5 w-3.5" stroke="2.4" /> New Purchase Order</button></template>
+            <div class="flex items-center gap-2">
+                <button type="button" @click="printPurchases()" class="grid h-8 w-8 place-items-center rounded-md border border-slate-300 bg-white text-slate-600 hover:border-slate-900" title="Print"><x-pos.icon name="printer" class="h-3.5 w-3.5" /></button>
+                <a :href="routes.export" class="grid h-8 w-8 place-items-center rounded-md border border-slate-300 bg-white text-slate-600 hover:border-slate-900" title="Export CSV"><x-pos.icon name="download" class="h-3.5 w-3.5" /></a>
+                <template x-if="tab === 'po'"><button type="button" @click="openCreatePO()" class="flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800"><x-pos.icon name="plus" class="h-3.5 w-3.5" stroke="2.4" /> New Purchase Order</button></template>
+            </div>
         </x-admin.page-header>
 
         <div class="pos-infobar flex items-center gap-1.5 overflow-x-auto border-b border-slate-200 bg-white px-4 pos-no-scrollbar">
@@ -54,8 +68,10 @@
                                             <button type="button" @click="openDetail(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">View Detail</button>
                                             <button type="button" x-show="o.status === 'draft'" @click="requestApproval(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Submit for Approval</button>
                                             <button type="button" x-show="o.status === 'approval_pending'" @click="openApprove(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Approve</button>
+                                            <button type="button" x-show="o.status === 'approved'" @click="markOrdered(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Mark Ordered</button>
                                             <button type="button" x-show="['ordered','partially_received'].includes(o.status)" @click="openReceiveGoods(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Receive Goods</button>
                                             <button type="button" x-show="!['received','cancelled'].includes(o.status)" @click="cancelPO(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-rose-600 hover:bg-rose-50">Cancel</button>
+                                            <button type="button" @click="deletePO(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-rose-600 hover:bg-rose-50">Delete</button>
                                         </x-admin.action-menu>
                                     </td>
                                 </tr>

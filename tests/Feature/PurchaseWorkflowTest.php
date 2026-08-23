@@ -1,0 +1,115 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Branch;
+use App\Models\Employee;
+use App\Models\Ingredient;
+use App\Models\PurchaseOrder;
+use App\Models\Role;
+use App\Models\StockLedgerEntry;
+use App\Models\Supplier;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class PurchaseWorkflowTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_purchase_order_can_be_created_approved_and_received(): void
+    {
+        [$user] = $this->actingEmployee();
+        $this->actingAs($user);
+
+        $supplier = Supplier::create(['name' => 'Bengal Food Supplies', 'status' => 'active']);
+        $ingredient = Ingredient::create([
+            'code' => 'ING-001',
+            'name' => 'Basmati Rice',
+            'category' => 'Grains',
+            'unit' => 'KG',
+            'current_stock' => 10,
+            'min_stock' => 5,
+            'reorder_level' => 8,
+            'avg_cost' => 70,
+            'supplier_id' => $supplier->id,
+        ]);
+        PurchaseOrder::create([
+            'code' => 'PO-' . now()->format('Y') . '-0084',
+            'supplier_id' => $supplier->id,
+            'date' => now()->toDateString(),
+            'status' => 'cancelled',
+        ]);
+
+        $create = $this->postJson('/purchases/orders', [
+            'supplier' => $supplier->name,
+            'expectedDelivery' => now()->addDay()->toDateString(),
+            'reference' => 'REF-1',
+            'notes' => 'Weekly rice order',
+            'items' => [[
+                'ingredient' => $ingredient->name,
+                'qty' => 15,
+                'unit' => 'KG',
+                'rate' => 72,
+                'tax' => 5,
+            ]],
+            'discount' => 10,
+            'otherCharges' => 20,
+        ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('order.id', 'PO-' . now()->format('Y') . '-0085')
+            ->assertJsonPath('order.status', 'draft');
+
+        $order = PurchaseOrder::where('code', $create->json('order.id'))->firstOrFail();
+
+        $this->patchJson("/purchases/orders/{$order->id}/status", ['status' => 'approved'])
+            ->assertOk()
+            ->assertJsonPath('order.status', 'approved');
+
+        $this->patchJson("/purchases/orders/{$order->id}/status", ['status' => 'ordered'])
+            ->assertOk()
+            ->assertJsonPath('order.status', 'ordered');
+
+        $receipt = $this->postJson('/purchases/receipts', [
+            'poRef' => $order->code,
+            'invoiceNumber' => 'INV-100',
+            'receivedDate' => now()->toDateString(),
+            'items' => [[
+                'ingredient' => $ingredient->name,
+                'ordered' => 15,
+                'prevReceived' => 0,
+                'receivedNow' => 15,
+                'rejected' => 2,
+            ]],
+        ]);
+
+        $receipt->assertCreated()
+            ->assertJsonPath('orders.0.status', 'received');
+
+        $this->assertDatabaseHas('ingredients', ['id' => $ingredient->id, 'current_stock' => 23]);
+        $this->assertDatabaseHas('stock_ledger_entries', [
+            'ingredient_id' => $ingredient->id,
+            'type' => 'PURCHASE',
+            'change_qty' => 13,
+        ]);
+    }
+
+    private function actingEmployee(): array
+    {
+        $user = User::factory()->create();
+        $branch = Branch::create(['code' => 'ICH-01', 'name' => 'Ichapur Main Branch']);
+        $role = Role::create(['name' => 'Restaurant Owner']);
+        $employee = Employee::create([
+            'user_id' => $user->id,
+            'role_id' => $role->id,
+            'branch_id' => $branch->id,
+            'employee_code' => 'EMP-001',
+            'name' => 'Rakesh Singh',
+            'phone' => '9999999999',
+            'status' => 'active',
+        ]);
+
+        return [$user, $employee];
+    }
+}

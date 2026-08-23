@@ -1,4 +1,5 @@
 {{-- Customer Profile Drawer — Overview / Orders / Reservations / Loyalty / Notes tabs. --}}
+<div x-show="showProfile && !showForm" x-cloak>
 <x-pos.dialog name="profile" variant="drawer" width="max-w-lg" title="Customer Profile" :subtitle="null">
     <template x-if="activeCustomer">
         <div>
@@ -104,9 +105,11 @@
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</div>
 
 
 {{-- Add / Edit Customer --}}
+<div x-show="showForm" x-cloak>
 <x-pos.dialog name="form" width="max-w-lg" title="Customer Details">
     <div class="grid grid-cols-2 gap-3 p-4">
         <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Name</label><input x-model="draft.name" data-autofocus class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" /></div>
@@ -128,15 +131,17 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveCustomer()" :disabled="!draft.name?.trim() || (draft.phone || '').trim().length < 10" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+            <button type="button" @click="saveCustomer()" :disabled="saving || !draft.name?.trim() || (draft.phone || '').trim().length < 10" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-text="draft.id ? 'Save Changes' : 'Add Customer'"></span>
             </button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</div>
 
 
 {{-- Adjust Loyalty Points --}}
+<div x-show="showLoyalty" x-cloak>
 <x-pos.dialog name="loyalty" width="max-w-sm" title="Adjust Loyalty Points">
     <div class="space-y-3 p-4">
         <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Points <span class="font-normal normal-case text-slate-400">(use − to deduct)</span></label>
@@ -148,19 +153,22 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="applyLoyaltyAdjust(activeCustomer)" :disabled="!Number(loyaltyDraft.points) || !loyaltyDraft.reason" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Apply</button>
+            <button type="button" @click="applyLoyaltyAdjust(activeCustomer)" :disabled="saving || !Number(loyaltyDraft.points) || !loyaltyDraft.reason" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Apply</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</div>
 
 
 {{-- Add / Edit Note --}}
+<div x-show="showNote" x-cloak>
 <x-pos.dialog name="note" width="max-w-sm" title="Customer Note">
     <div class="p-4"><textarea x-model="noteDraft" data-autofocus rows="4" placeholder="Preferences, allergy notes, seating requests…" class="w-full resize-none rounded-md border border-slate-300 bg-white px-2.5 py-2 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none"></textarea></div>
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveNote(activeCustomer)" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800">Save Note</button>
+            <button type="button" @click="saveNote(activeCustomer)" :disabled="saving" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Note</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</div>

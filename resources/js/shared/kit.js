@@ -20,6 +20,10 @@ export function overlayMixin() {
             this.stack.push(name);
             this.$nextTick(() => this.focusFirst());
         },
+        openOnly(name) {
+            this.stack = [name];
+            this.$nextTick(() => this.focusFirst());
+        },
         swap(name) {
             if (this.stack.length) this.stack[this.stack.length - 1] = name;
             else this.stack.push(name);

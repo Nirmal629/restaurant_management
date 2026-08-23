@@ -3,7 +3,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Expenses · Royal Bengal Restaurant</title>
+    <script>
+        window.expenseModule = @json($expenseModule);
+        window.expenseRoutes = {
+            data: @json(route('expenses.data')),
+            base: @json(url('/expenses')),
+            export: @json(route('expenses.export')),
+        };
+    </script>
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/admin.css', 'resources/js/expenses.js'])
 </head>
 <body x-data="expensesApp" x-cloak class="adm-root adm-shell bg-slate-100 text-slate-900 antialiased">
@@ -12,9 +21,13 @@
 
     <div class="adm-main">
         <x-admin.page-header title="Expenses" subtitle="Ichapur Main Branch">
-            <button type="button" @click="openCreate()" class="flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800">
-                <x-pos.icon name="plus" class="h-3.5 w-3.5" stroke="2.4" /> Record Expense
-            </button>
+            <div class="flex items-center gap-2">
+                <button type="button" @click="printExpenses()" class="grid h-8 w-8 place-items-center rounded-md border border-slate-300 bg-white text-slate-600 hover:border-slate-900" title="Print"><x-pos.icon name="printer" class="h-3.5 w-3.5" /></button>
+                <a :href="routes.export" class="grid h-8 w-8 place-items-center rounded-md border border-slate-300 bg-white text-slate-600 hover:border-slate-900" title="Export CSV"><x-pos.icon name="download" class="h-3.5 w-3.5" /></a>
+                <button type="button" @click="openCreate()" class="flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800">
+                    <x-pos.icon name="plus" class="h-3.5 w-3.5" stroke="2.4" /> Record Expense
+                </button>
+            </div>
         </x-admin.page-header>
 
         <div class="pos-infobar flex items-center gap-1.5 overflow-x-auto border-b border-slate-200 bg-white px-4 pos-no-scrollbar">
@@ -55,6 +68,7 @@
                                     <button type="button" x-show="e.status === 'draft'" @click="approve(e)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Approve</button>
                                     <button type="button" x-show="e.status === 'approved'" @click="markPaid(e)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Mark Paid</button>
                                     <button type="button" x-show="e.status === 'draft'" @click="openReject(e)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-rose-600 hover:bg-rose-50">Reject</button>
+                                    <button type="button" @click="deleteExpense(e)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-rose-600 hover:bg-rose-50">Delete</button>
                                 </x-admin.action-menu>
                             </td>
                         </tr>
