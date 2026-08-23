@@ -33,6 +33,7 @@ class DatabaseSeeder extends Seeder
             ReservationSeeder::class,
             ExpenseSeeder::class,
             OrderAndBillingSeeder::class,
+            CouponSeeder::class,
         ]);
     }
 }

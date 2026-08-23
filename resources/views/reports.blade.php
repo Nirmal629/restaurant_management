@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Reports · Royal Bengal Restaurant</title>
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/admin.css', 'resources/js/reports.js'])
+    <script>
+        window.reportsModule = @json($reportsPayload);
+        window.reportsRoutes = {
+            data: @json(route('reports.data')),
+            export: @json(url('/reports/export')),
+        };
+    </script>
 </head>
 <body x-data="reportsApp" x-cloak class="adm-root adm-shell bg-slate-100 text-slate-900 antialiased">
 
@@ -13,9 +20,9 @@
     <div class="adm-main">
         <x-admin.page-header title="Reports" subtitle="Ichapur Main Branch">
             <div class="flex items-center gap-1.5">
-                <input x-model="dateFrom" type="date" class="pos-num h-8 rounded-md border border-slate-300 bg-white px-2 text-[11.5px] font-medium focus:border-slate-900 focus:outline-none" />
+                <input x-model="dateFrom" @change.debounce.250ms="loadReport()" type="date" class="pos-num h-8 rounded-md border border-slate-300 bg-white px-2 text-[11.5px] font-medium focus:border-slate-900 focus:outline-none" />
                 <span class="text-[11px] text-slate-400">to</span>
-                <input x-model="dateTo" type="date" class="pos-num h-8 rounded-md border border-slate-300 bg-white px-2 text-[11.5px] font-medium focus:border-slate-900 focus:outline-none" />
+                <input x-model="dateTo" @change.debounce.250ms="loadReport()" type="date" class="pos-num h-8 rounded-md border border-slate-300 bg-white px-2 text-[11.5px] font-medium focus:border-slate-900 focus:outline-none" />
             </div>
             <select x-model="branch" class="h-8 rounded-md border border-slate-300 bg-white px-2 text-[11.5px] font-bold text-slate-700 focus:border-slate-900 focus:outline-none">
                 <option>Ichapur Main Branch</option>
@@ -46,6 +53,7 @@
             <section class="flex min-w-0 flex-1 flex-col overflow-hidden">
                 <div class="pos-dock flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-2">
                     <h2 class="text-[13px] font-black text-slate-900" x-text="activeReport"></h2>
+                    <span x-show="loading" class="text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Loading</span>
                     <span class="flex-1"></span>
                     <button type="button" @click="exportAs('excel')" class="flex h-7 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-[10.5px] font-bold text-slate-700 hover:border-slate-900"><x-pos.icon name="download" class="h-3.5 w-3.5" /> Excel</button>
                     <button type="button" @click="exportAs('csv')" class="flex h-7 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-[10.5px] font-bold text-slate-700 hover:border-slate-900"><x-pos.icon name="download" class="h-3.5 w-3.5" /> CSV</button>
@@ -160,7 +168,6 @@
                     {{-- GENERIC FALLBACK — every other report in the catalog --}}
                     <template x-if="!['Daily Sales','Menu Profitability','Revenue','Sales by Waiter','Orders by Waiter'].includes(activeReport)">
                         <div>
-                            <p class="mb-2 rounded border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-[11px] font-semibold text-sky-800">Representative sample data — this report's live calculation isn't wired up yet in this design preview.</p>
                             <div class="grid grid-cols-4 gap-2">
                                 <div class="rounded-md border border-slate-200 bg-white p-2.5"><p class="text-[9px] font-black uppercase tracking-wide text-slate-400">Total</p><p class="pos-num text-[15px] font-black text-slate-900" x-text="money(genericTotals.total)"></p></div>
                                 <div class="rounded-md border border-slate-200 bg-white p-2.5"><p class="text-[9px] font-black uppercase tracking-wide text-slate-400">Count</p><p class="pos-num text-[15px] font-black text-slate-900" x-text="genericTotals.qty"></p></div>

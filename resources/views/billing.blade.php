@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Billing · Royal Bengal Restaurant</title>
     {{--
         pos.css supplies the shared "operational terminal" layout primitives
@@ -11,6 +12,14 @@
         so Billing matches POS/Floor/KDS exactly.
     --}}
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/billing.css', 'resources/js/billing.js'])
+    <script>
+        window.billingModule = @json($billingModule);
+        window.billingRoutes = {
+            data: @json(route('billing.data')),
+            invoice: @json(url('/billing/invoices')),
+            item: @json(url('/billing/items')),
+        };
+    </script>
 </head>
 
 {{--
@@ -39,6 +48,7 @@
     <x-billing.order-info />
 
     <div class="pos-workspace bil-workspace">
+        <x-billing.queue-panel />
         <x-billing.items-panel />
 
         {{-- Mobile/1024px tab switcher between Summary and Payment --}}
@@ -54,22 +64,22 @@
     <x-billing.toast />
 
     <div x-ref="overlayRoot">
-        <x-billing.overlays.discount-modal />
-        <x-billing.overlays.approval-modal />
-        <x-billing.overlays.complimentary-modal />
-        <x-billing.overlays.cancel-item-modal />
-        <x-billing.overlays.split-bill-modal />
-        <x-billing.overlays.bill-preview-drawer />
-        <x-billing.overlays.customer-drawer />
-        <x-billing.overlays.gst-invoice-form />
-        <x-billing.overlays.loyalty-modal />
-        <x-billing.overlays.coupon-modal />
-        <x-billing.overlays.payment-success-modal />
-        <x-billing.overlays.payment-history-drawer />
-        <x-billing.overlays.refund-modal />
-        <x-billing.overlays.void-modal />
-        <x-billing.overlays.close-table-modal />
-        <x-billing.overlays.audit-modal />
+        <template x-if="overlay === 'discount'"><x-billing.overlays.discount-modal /></template>
+        <template x-if="overlay === 'approval'"><x-billing.overlays.approval-modal /></template>
+        <template x-if="overlay === 'comp'"><x-billing.overlays.complimentary-modal /></template>
+        <template x-if="overlay === 'cancelItem'"><x-billing.overlays.cancel-item-modal /></template>
+        <template x-if="overlay === 'split'"><x-billing.overlays.split-bill-modal /></template>
+        <template x-if="overlay === 'preview'"><x-billing.overlays.bill-preview-drawer /></template>
+        <template x-if="overlay === 'customer'"><x-billing.overlays.customer-drawer /></template>
+        <template x-if="overlay === 'gst'"><x-billing.overlays.gst-invoice-form /></template>
+        <template x-if="overlay === 'loyalty'"><x-billing.overlays.loyalty-modal /></template>
+        <template x-if="overlay === 'coupon'"><x-billing.overlays.coupon-modal /></template>
+        <template x-if="overlay === 'success'"><x-billing.overlays.payment-success-modal /></template>
+        <template x-if="overlay === 'history'"><x-billing.overlays.payment-history-drawer /></template>
+        <template x-if="overlay === 'refund'"><x-billing.overlays.refund-modal /></template>
+        <template x-if="overlay === 'void'"><x-billing.overlays.void-modal /></template>
+        <template x-if="overlay === 'closeTable'"><x-billing.overlays.close-table-modal /></template>
+        <template x-if="overlay === 'audit'"><x-billing.overlays.audit-modal /></template>
     </div>
 </body>
 </html>

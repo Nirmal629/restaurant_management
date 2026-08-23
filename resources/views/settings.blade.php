@@ -2,9 +2,17 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="utf-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Settings · Royal Bengal Restaurant</title>
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/admin.css', 'resources/js/settings.js'])
+    <script>
+        window.settingsModule = @json($settingsPayload);
+        window.settingsRoutes = {
+            data: @json(route('settings.data')),
+            section: @json(url('/settings')),
+        };
+    </script>
 </head>
 <body x-data="settingsApp" x-cloak class="adm-root adm-shell bg-slate-100 text-slate-900 antialiased">
 
@@ -83,7 +91,7 @@
                     </template>
 
                     <p class="mt-4 rounded border border-slate-200 bg-white px-3 py-2 text-[11px] leading-snug text-slate-400">
-                        This is a design-only preview — nothing here is persisted to a server. Dangerous changes (tax rates, numbering formats, security policy) would require manager or owner authorization in the live system.
+                        Settings are saved section-by-section and take effect for modules as they read the shared configuration.
                     </p>
                 </div>
 
@@ -91,8 +99,8 @@
                 <div class="pos-dock flex items-center gap-2 border-t border-slate-200 bg-white px-4 py-2.5">
                     <span x-show="sectionDirty" class="text-[11px] font-semibold text-amber-700">You have unsaved changes in this section.</span>
                     <span class="flex-1"></span>
-                    <button type="button" @click="resetSection()" :disabled="!sectionDirty" class="h-9 rounded-md border border-slate-300 bg-white px-3 text-[11.5px] font-bold text-slate-700 hover:border-slate-900 disabled:cursor-not-allowed disabled:opacity-40">Reset</button>
-                    <button type="button" @click="saveChanges()" :disabled="!sectionDirty" class="h-9 rounded-md bg-slate-900 px-4 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Changes</button>
+                    <button type="button" @click="resetSection()" :disabled="saving" class="h-9 rounded-md border border-slate-300 bg-white px-3 text-[11.5px] font-bold text-slate-700 hover:border-slate-900 disabled:cursor-not-allowed disabled:opacity-40">Reset</button>
+                    <button type="button" @click="saveChanges()" :disabled="!sectionDirty || saving" class="h-9 rounded-md bg-slate-900 px-4 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Changes</button>
                 </div>
             </section>
         </div>

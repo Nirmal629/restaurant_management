@@ -88,6 +88,18 @@ class Invoice extends Model
         return max(0, round($this->subtotal() - $this->totalDeductions(), 2));
     }
 
+    public function couponBaseAmount(): float
+    {
+        return max(0, round(
+            $this->subtotal()
+            - $this->itemDiscountTotal()
+            - $this->complimentaryTotal()
+            - $this->billDiscountAmount()
+            - $this->loyalty_amount,
+            2
+        ));
+    }
+
     public function cgstAmount(): float
     {
         return $this->tax_mode === 'inclusive' ? 0.0 : round($this->taxableAmount() * $this->cgst_rate, 2);

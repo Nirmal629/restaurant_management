@@ -44,9 +44,9 @@
                 <div>
                     <p class="mb-1.5 text-[10px] font-black uppercase tracking-[0.09em] text-slate-500">Quick Payment</p>
                     <div class="grid grid-cols-3 gap-1.5">
-                        <button type="button" @click="quickFull('cash')" :disabled="dueAmount <= 0" class="h-10 rounded-md border border-slate-300 bg-white text-[10.5px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900 disabled:opacity-40">Cash · Exact</button>
-                        <button type="button" @click="quickFull('upi')" :disabled="dueAmount <= 0" class="h-10 rounded-md border border-slate-300 bg-white text-[10.5px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900 disabled:opacity-40">UPI · Full</button>
-                        <button type="button" @click="quickFull('credit')" :disabled="dueAmount <= 0" class="h-10 rounded-md border border-slate-300 bg-white text-[10.5px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900 disabled:opacity-40">Card · Full</button>
+                        <button type="button" @click="quickFull('cash')" :disabled="dueAmount <= 0" class="min-h-10 rounded-md border border-slate-300 bg-white px-1 text-[10px] font-bold uppercase leading-tight text-slate-700 hover:border-slate-900 disabled:opacity-40">Cash Exact</button>
+                        <button type="button" @click="quickFull('upi')" :disabled="dueAmount <= 0" class="min-h-10 rounded-md border border-slate-300 bg-white px-1 text-[10px] font-bold uppercase leading-tight text-slate-700 hover:border-slate-900 disabled:opacity-40">UPI Full</button>
+                        <button type="button" @click="quickFull('credit')" :disabled="dueAmount <= 0" class="min-h-10 rounded-md border border-slate-300 bg-white px-1 text-[10px] font-bold uppercase leading-tight text-slate-700 hover:border-slate-900 disabled:opacity-40">Card Full</button>
                     </div>
                 </div>
 

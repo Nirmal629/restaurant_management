@@ -12,6 +12,7 @@
             data: @json(route('customers.data')),
             store: @json(route('customers.store')),
             update: @json(url('/customers')),
+            coupons: @json(url('/customers/coupons')),
         };
     </script>
 </head>
@@ -21,9 +22,14 @@
 
     <div class="adm-main">
         <x-admin.page-header title="Customers" subtitle="Ichapur Main Branch">
-            <button type="button" @click="openCreate()" class="flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800">
-                <x-pos.icon name="plus" class="h-3.5 w-3.5" stroke="2.4" /> Add Customer
-            </button>
+            <div class="flex items-center gap-2">
+                <button type="button" @click="openCoupons()" class="flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[11.5px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">
+                    <x-pos.icon name="tag" class="h-3.5 w-3.5" /> Coupons
+                </button>
+                <button type="button" @click="openCreate()" class="flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800">
+                    <x-pos.icon name="plus" class="h-3.5 w-3.5" stroke="2.4" /> Add Customer
+                </button>
+            </div>
         </x-admin.page-header>
 
         <div class="pos-infobar flex items-center gap-1.5 overflow-x-auto border-b border-slate-200 bg-white px-4 pos-no-scrollbar">

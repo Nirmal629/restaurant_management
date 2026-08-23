@@ -2,12 +2,15 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login')->name('home');
@@ -30,11 +33,25 @@ Route::middleware('auth')->group(function () {
     Route::view('/pos', 'pos')->middleware('permission:POS,View')->name('pos');
     Route::view('/tables', 'tables')->middleware('permission:Orders,View')->name('tables');
     Route::view('/kds', 'kds')->middleware('permission:Kitchen,View')->name('kds');
-    Route::view('/billing', 'billing')->middleware('permission:Billing,View')->name('billing');
+    Route::get('/billing', [BillingController::class, 'index'])->middleware('permission:Billing,View')->name('billing');
+    Route::get('/billing/data', [BillingController::class, 'data'])->middleware('permission:Billing,View')->name('billing.data');
+    Route::patch('/billing/invoices/{invoice}/discount', [BillingController::class, 'discount'])->middleware('permission:Billing,Edit')->name('billing.discount');
+    Route::patch('/billing/invoices/{invoice}/adjustments', [BillingController::class, 'adjustments'])->middleware('permission:Billing,Edit')->name('billing.adjustments');
+    Route::post('/billing/invoices/{invoice}/coupon', [BillingController::class, 'applyCoupon'])->middleware('permission:Billing,Edit')->name('billing.coupon.apply');
+    Route::delete('/billing/invoices/{invoice}/coupon', [BillingController::class, 'removeCoupon'])->middleware('permission:Billing,Edit')->name('billing.coupon.remove');
+    Route::patch('/billing/items/{item}', [BillingController::class, 'item'])->middleware('permission:Billing,Edit')->name('billing.items');
+    Route::post('/billing/invoices/{invoice}/payments', [BillingController::class, 'payment'])->middleware('permission:Billing,Create')->name('billing.payments');
+    Route::post('/billing/invoices/{invoice}/complete', [BillingController::class, 'complete'])->middleware('permission:Billing,Create')->name('billing.complete');
+    Route::post('/billing/invoices/{invoice}/refunds', [BillingController::class, 'refund'])->middleware('permission:Billing,Cancel')->name('billing.refunds');
+    Route::post('/billing/invoices/{invoice}/void', [BillingController::class, 'void'])->middleware('permission:Billing,Cancel')->name('billing.void');
+    Route::post('/billing/invoices/{invoice}/close', [BillingController::class, 'close'])->middleware('permission:Billing,Edit')->name('billing.close');
     Route::view('/reservations', 'reservations')->middleware('permission:Orders,View')->name('reservations');
     Route::get('/customers', [CustomerController::class, 'index'])->middleware('permission:Customers,View')->name('customers');
     Route::get('/customers/data', [CustomerController::class, 'data'])->middleware('permission:Customers,View')->name('customers.data');
     Route::post('/customers', [CustomerController::class, 'store'])->middleware('permission:Customers,Create')->name('customers.store');
+    Route::post('/customers/coupons', [CustomerController::class, 'storeCoupon'])->middleware('permission:Customers,Create')->name('customers.coupons.store');
+    Route::put('/customers/coupons/{coupon}', [CustomerController::class, 'updateCoupon'])->middleware('permission:Customers,Edit')->name('customers.coupons.update');
+    Route::delete('/customers/coupons/{coupon}', [CustomerController::class, 'destroyCoupon'])->middleware('permission:Customers,Edit')->name('customers.coupons.destroy');
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware('permission:Customers,Edit')->name('customers.update');
     Route::patch('/customers/{customer}/vip', [CustomerController::class, 'vip'])->middleware('permission:Customers,Edit')->name('customers.vip');
     Route::patch('/customers/{customer}/loyalty', [CustomerController::class, 'loyalty'])->middleware('permission:Customers,Edit')->name('customers.loyalty');
@@ -82,7 +99,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/expenses/{expense}/status', [ExpenseController::class, 'status'])->middleware('permission:Expenses,Approve')->name('expenses.status');
     Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->middleware('permission:Expenses,Cancel')->name('expenses.destroy');
     Route::get('/expenses/export', [ExpenseController::class, 'export'])->middleware('permission:Expenses,Export')->name('expenses.export');
-    Route::view('/reports', 'reports')->middleware('permission:Reports,View')->name('reports');
+    Route::get('/reports', [ReportController::class, 'index'])->middleware('permission:Reports,View')->name('reports');
+    Route::get('/reports/data', [ReportController::class, 'data'])->middleware('permission:Reports,View')->name('reports.data');
+    Route::get('/reports/export/{kind}', [ReportController::class, 'export'])->middleware('permission:Reports,Export')->name('reports.export');
     Route::get('/employees', [EmployeeController::class, 'index'])->middleware('permission:Employees,View')->name('employees');
     Route::get('/employees/data', [EmployeeController::class, 'data'])->middleware('permission:Employees,View')->name('employees.data');
     Route::post('/employees', [EmployeeController::class, 'store'])->middleware('permission:Employees,Create')->name('employees.store');
@@ -90,5 +109,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/employees/{employee}/status', [EmployeeController::class, 'status'])->middleware('permission:Employees,Edit')->name('employees.status');
     Route::patch('/employees/{employee}/shift', [EmployeeController::class, 'shift'])->middleware('permission:Employees,Edit')->name('employees.shift');
     Route::patch('/employees/{employee}/permissions', [EmployeeController::class, 'permissions'])->middleware('permission:Employees,Approve')->name('employees.permissions');
-    Route::view('/settings', 'settings')->middleware('permission:Settings,View')->name('settings');
+    Route::get('/settings', [SettingController::class, 'index'])->middleware('permission:Settings,View')->name('settings');
+    Route::get('/settings/data', [SettingController::class, 'data'])->middleware('permission:Settings,View')->name('settings.data');
+    Route::put('/settings/{section}', [SettingController::class, 'update'])->middleware('permission:Settings,Edit')->name('settings.update');
+    Route::delete('/settings/{section}', [SettingController::class, 'reset'])->middleware('permission:Settings,Edit')->name('settings.reset');
 });

@@ -14,7 +14,6 @@ import {
     PAYMENTS,
     REFUND_REASONS,
     SHORTCUTS,
-    VALID_COUPONS,
     VENUE,
     VOID_REASONS,
     WAITERS,
@@ -33,39 +32,47 @@ const inr = (n, decimals = 0) =>
  * recalculates the whole chain live.
  */
 export default function billingApp(posUrl, tablesUrl) {
+    const boot = window.billingModule || {};
+    const routes = window.billingRoutes || {};
+    const bootCustomer = boot.customer || CUSTOMER;
+
     return {
         /* ---------------------------------------------------------------
            Reference data
            --------------------------------------------------------------- */
         posUrl,
         tablesUrl,
-        venue: VENUE,
-        operator: OPERATOR,
-        invoice: { ...INVOICE, status: 'partially_paid', voided: false, voidReason: null },
-        order: { ...ORDER },
-        paymentMethods: PAYMENT_METHODS,
+        venue: boot.venue || VENUE,
+        operator: boot.operator || OPERATOR,
+        invoice: { ...(boot.invoice || INVOICE), status: boot.invoice?.status || 'generated', voided: boot.invoice?.voided || false, voidReason: boot.invoice?.voidReason || null },
+        order: { ...(boot.order || ORDER) },
+        billingOrders: (boot.orders || []).map((o) => ({ ...o })),
+        billingHistory: (boot.history || []).map((o) => ({ ...o })),
+        paymentMethods: boot.paymentMethods || PAYMENT_METHODS,
+        availableCoupons: boot.availableCoupons || [],
+        totals: boot.totals || null,
         discountReasons: DISCOUNT_REASONS,
         compReasons: COMP_REASONS,
         cancelReasons: CANCEL_REASONS,
         refundReasons: REFUND_REASONS,
         voidReasons: VOID_REASONS,
         waiters: WAITERS,
-        customers: CUSTOMERS,
+        customers: boot.customers || CUSTOMERS,
         shortcuts: SHORTCUTS,
         clock: '',
 
         /* ---------------------------------------------------------------
            Mutable dummy state
            --------------------------------------------------------------- */
-        customer: { ...CUSTOMER, loyalty: { ...CUSTOMER.loyalty } },
+        customer: { ...bootCustomer, loyalty: { ...(bootCustomer.loyalty || CUSTOMER.loyalty) } },
         gstInvoice: false,
-        items: ITEMS.map((i) => ({ ...i })),
-        charges: { ...CHARGES },
-        billDiscount: { ...BILL_DISCOUNT },
-        loyaltyRedeemed: null, // { points, amount }
-        coupon: null, // { code, pct, amount }
-        payments: PAYMENTS.map((p) => ({ ...p })),
-        refunds: [],
+        items: (boot.items || ITEMS).map((i) => ({ ...i })),
+        charges: { ...CHARGES, ...(boot.charges || {}) },
+        billDiscount: boot.billDiscount ?? { ...BILL_DISCOUNT },
+        loyaltyRedeemed: boot.loyaltyRedeemed || null, // { points, amount }
+        coupon: boot.coupon || null, // { code, pct, amount }
+        payments: (boot.payments || PAYMENTS).map((p) => ({ ...p })),
+        refunds: (boot.refunds || []).map((r) => ({ ...r })),
 
         /* ---------------------------------------------------------------
            UI state
@@ -74,7 +81,9 @@ export default function billingApp(posUrl, tablesUrl) {
         stack: [],
         toast: null,
         moreOpen: false,
+        queueMode: 'active',
         printerReady: true,
+        saving: false,
 
         discountDraft: { scope: 'bill', mode: 'pct', value: '', reason: '', target: null },
         itemMenuOpenUid: null,
@@ -117,7 +126,9 @@ export default function billingApp(posUrl, tablesUrl) {
         },
 
         /* ---------------------------------------------------------------
-           Overlay stack (same shape as POS / Floor / KDS)
+           Billing overlays are exclusive. The shared dialog component can
+           stack modals, but this screen should never keep older billing
+           drawers/modals visible behind the current one.
            --------------------------------------------------------------- */
         get overlay() {
             return this.stack.length ? this.stack[this.stack.length - 1] : null;
@@ -125,16 +136,16 @@ export default function billingApp(posUrl, tablesUrl) {
         open(name) {
             this.moreOpen = false;
             if (this.overlay === name) return;
-            this.stack.push(name);
+            this.stack = [name];
             this.$nextTick(() => this.focusFirst());
         },
         swap(name) {
-            if (this.stack.length) this.stack[this.stack.length - 1] = name;
-            else this.stack.push(name);
+            this.moreOpen = false;
+            this.stack = [name];
             this.$nextTick(() => this.focusFirst());
         },
         back() {
-            this.stack.pop();
+            this.stack = [];
         },
         closeAll() {
             this.stack = [];
@@ -149,6 +160,93 @@ export default function billingApp(posUrl, tablesUrl) {
             this.toast = { message, tone };
             clearTimeout(this._toastTimer);
             this._toastTimer = setTimeout(() => (this.toast = null), 2600);
+        },
+        applyServerState(data) {
+            if (!data) return;
+            if (data.venue) this.venue = data.venue;
+            if (data.operator) this.operator = data.operator;
+            if (data.orders) this.billingOrders = data.orders.map((o) => ({ ...o }));
+            if (data.history) this.billingHistory = data.history.map((o) => ({ ...o }));
+            if (data.invoice) this.invoice = { ...this.invoice, ...data.invoice };
+            if (data.order) this.order = { ...this.order, ...data.order };
+            if (data.customer) this.customer = { ...data.customer, loyalty: { ...(data.customer.loyalty || {}) } };
+            if (data.items) this.items = data.items.map((i) => ({ ...i }));
+            if (data.charges) this.charges = { ...this.charges, ...data.charges };
+            if ('billDiscount' in data) this.billDiscount = data.billDiscount;
+            if ('loyaltyRedeemed' in data) this.loyaltyRedeemed = data.loyaltyRedeemed;
+            if ('coupon' in data) this.coupon = data.coupon;
+            if (data.payments) this.payments = data.payments.map((p) => ({ ...p }));
+            if (data.refunds) this.refunds = data.refunds.map((r) => ({ ...r }));
+            if (data.availableCoupons) this.availableCoupons = data.availableCoupons.map((c) => ({ ...c }));
+            if (data.totals) this.totals = { ...data.totals };
+        },
+        async request(url, options = {}) {
+            if (!url || this.saving) return null;
+            this.saving = true;
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        ...(options.headers || {}),
+                    },
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const firstError = data.errors ? Object.values(data.errors).flat()[0] : null;
+                    this.notify(firstError || data.message || 'Billing update failed', 'warn');
+                    return null;
+                }
+                this.applyServerState(data);
+                return data;
+            } catch (error) {
+                this.notify('Network error while updating billing', 'warn');
+                return null;
+            } finally {
+                this.saving = false;
+            }
+        },
+        async refreshBilling() {
+            if (!routes.data) return null;
+            try {
+                const glue = routes.data.includes('?') ? '&' : '?';
+                const response = await fetch(`${routes.data}${glue}order=${this.order.id}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) return null;
+                this.applyServerState(data);
+                return data;
+            } catch (error) {
+                return null;
+            }
+        },
+        async selectOrder(orderId) {
+            if (!routes.data || !orderId || orderId === this.order.id || this.saving) return;
+            this.closeAll();
+            this.itemMenuOpenUid = null;
+            this.saving = true;
+            try {
+                const glue = routes.data.includes('?') ? '&' : '?';
+                const response = await fetch(`${routes.data}${glue}order=${orderId}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.empty) {
+                    this.notify(data.message || 'Unable to open bill', 'warn');
+                    return;
+                }
+                this.applyServerState(data);
+                const url = new URL(window.location.href);
+                url.searchParams.set('order', String(orderId));
+                window.history.replaceState({}, '', url.toString());
+            } catch (error) {
+                this.notify('Network error while opening bill', 'warn');
+            } finally {
+                this.saving = false;
+            }
         },
 
         /* ---------------------------------------------------------------
@@ -165,60 +263,77 @@ export default function billingApp(posUrl, tablesUrl) {
             return this.items.filter((i) => i.status === 'cancelled' || i.status === 'refunded');
         },
         get subtotal() {
+            if (this.totals) return Number(this.totals.subtotal) || 0;
             return this.billableItems.reduce((s, i) => s + i.amount, 0);
         },
         get itemDiscountTotal() {
+            if (this.totals) return Number(this.totals.itemDiscountTotal) || 0;
             return this.items.filter((i) => i.status === 'discounted').reduce((s, i) => s + i.discount, 0);
         },
         get complimentaryTotal() {
+            if (this.totals) return Number(this.totals.complimentaryTotal) || 0;
             return this.items.filter((i) => i.status === 'complimentary').reduce((s, i) => s + i.amount, 0);
         },
         get billDiscountAmount() {
+            if (this.totals) return Number(this.totals.billDiscountAmount) || 0;
             if (!this.billDiscount) return 0;
             const base = this.subtotal - this.itemDiscountTotal - this.complimentaryTotal;
             const raw = this.billDiscount.mode === 'pct' ? (base * this.billDiscount.value) / 100 : this.billDiscount.value;
             return Math.min(Math.round(raw), base);
         },
         get loyaltyAmount() {
+            if (this.totals) return Number(this.totals.loyaltyAmount) || 0;
             return this.loyaltyRedeemed?.amount || 0;
         },
         get couponAmount() {
+            if (this.totals) return Number(this.totals.couponAmount) || 0;
             return this.coupon?.amount || 0;
         },
         get totalDeductions() {
+            if (this.totals) return Number(this.totals.totalDeductions) || 0;
             return this.itemDiscountTotal + this.complimentaryTotal + this.billDiscountAmount + this.loyaltyAmount + this.couponAmount;
         },
         get taxableAmount() {
+            if (this.totals) return Number(this.totals.taxableAmount) || 0;
             return Math.max(0, this.subtotal - this.totalDeductions);
         },
         get cgstAmount() {
+            if (this.totals) return Number(this.totals.cgstAmount) || 0;
             return this.charges.taxMode === 'inclusive' ? 0 : Math.round(this.taxableAmount * this.charges.cgstRate * 100) / 100;
         },
         get sgstAmount() {
+            if (this.totals) return Number(this.totals.sgstAmount) || 0;
             return this.charges.taxMode === 'inclusive' ? 0 : Math.round(this.taxableAmount * this.charges.sgstRate * 100) / 100;
         },
         get serviceAmount() {
+            if (this.totals) return Number(this.totals.serviceAmount) || 0;
             return this.charges.serviceRemoved ? 0 : Math.round(this.taxableAmount * this.charges.serviceRate);
         },
         get grandTotalRaw() {
+            if (this.totals) return Number(this.totals.grandTotalRaw) || 0;
             return this.taxableAmount + this.cgstAmount + this.sgstAmount + this.serviceAmount;
         },
         get grandTotal() {
+            if (this.totals) return Number(this.totals.grandTotal) || 0;
             return Math.round(this.grandTotalRaw);
         },
         get roundOff() {
+            if (this.totals) return Number(this.totals.roundOff) || 0;
             return this.grandTotal - this.grandTotalRaw;
         },
 
         /** Paid/due read from split bills once a split is active, otherwise from the main tender list. */
         get paidTotal() {
             if (this.split.active) return this.split.bills.reduce((s, b) => s + b.payments.reduce((s2, p) => s2 + p.amount, 0), 0);
+            if (this.totals) return Number(this.totals.paidTotal) || 0;
             return this.payments.filter((p) => p.status === 'success').reduce((s, p) => s + p.amount, 0);
         },
         get dueAmount() {
+            if (!this.split.active && this.totals) return Number(this.totals.dueAmount) || 0;
             return Math.max(0, this.grandTotal - this.paidTotal);
         },
         get refundedTotal() {
+            if (this.totals) return Number(this.totals.refundedTotal) || 0;
             return this.refunds.reduce((s, r) => s + r.amount, 0);
         },
 
@@ -285,13 +400,15 @@ export default function billingApp(posUrl, tablesUrl) {
             this.compDraft = { uid: i.uid, reason: '', note: '' };
             this.open('comp');
         },
-        confirmComplimentary() {
+        async confirmComplimentary() {
             const i = this.items.find((x) => x.uid === this.compDraft.uid);
             if (!i || !this.compDraft.reason) return;
-            const commit = (authorizedBy = this.operator.name) => {
-                i.status = 'complimentary';
-                i.compReason = this.compDraft.reason;
-                i.compBy = authorizedBy;
+            const commit = async () => {
+                const data = await this.request(`${routes.item}/${i.id || i.uid}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ action: 'complimentary', reason: this.compDraft.reason }),
+                });
+                if (!data) return;
                 this.back();
                 this.notify(`${i.name} marked complimentary`, 'success');
             };
@@ -299,7 +416,7 @@ export default function billingApp(posUrl, tablesUrl) {
             this.requestApproval({
                 title: 'Manager approval required',
                 detail: `Marking "${i.name}" (${this.money(i.amount)}) complimentary needs manager authorization.`,
-                onApprove: () => commit('Manager PIN'),
+                onApprove: () => commit(),
             });
         },
         openCancelItem(i) {
@@ -307,11 +424,14 @@ export default function billingApp(posUrl, tablesUrl) {
             this.cancelDraft = { uid: i.uid, reason: '' };
             this.open('cancelItem');
         },
-        confirmCancelItem() {
+        async confirmCancelItem() {
             const i = this.items.find((x) => x.uid === this.cancelDraft.uid);
             if (!i || !this.cancelDraft.reason) return;
-            i.status = 'cancelled';
-            i.cancelReason = this.cancelDraft.reason;
+            const data = await this.request(`${routes.item}/${i.id || i.uid}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ action: 'cancel', reason: this.cancelDraft.reason }),
+            });
+            if (!data) return;
             this.back();
             this.notify(`${i.name} cancelled — excluded from the bill`, 'warn');
         },
@@ -349,16 +469,25 @@ export default function billingApp(posUrl, tablesUrl) {
         get discountNeedsApproval() {
             return this.discountPct > this.operator.discountLimitPct;
         },
-        applyDiscount() {
+        async applyDiscount() {
             const v = Number(this.discountDraft.value) || 0;
             if (v <= 0 || !this.discountDraft.reason) return;
 
-            const commit = (approvedBy = null) => {
+            const commit = async (approvedBy = null) => {
                 if (this.discountDraft.scope === 'item') {
                     const i = this.items.find((x) => x.uid === this.discountDraft.target);
-                    if (i) { i.status = 'discounted'; i.discount = this.discountPreview; i.discountReason = this.discountDraft.reason; }
+                    if (!i) return;
+                    const data = await this.request(`${routes.item}/${i.id || i.uid}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ action: 'discount', mode: this.discountDraft.mode, value: v, reason: this.discountDraft.reason }),
+                    });
+                    if (!data) return;
                 } else {
-                    this.billDiscount = { mode: this.discountDraft.mode, value: v, reason: this.discountDraft.reason, approvedBy };
+                    const data = await this.request(`${routes.invoice}/${this.invoice.id}/discount`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ mode: this.discountDraft.mode, value: v, reason: this.discountDraft.reason, approvedBy }),
+                    });
+                    if (!data) return;
                 }
                 this.back();
                 this.notify(`Discount applied — ${this.money(this.discountPreview)}`, 'success');
@@ -402,12 +531,22 @@ export default function billingApp(posUrl, tablesUrl) {
                 this.requestApproval({
                     title: 'Manager approval required',
                     detail: `Service charge is locked for this terminal. Removing it needs manager authorization.`,
-                    onApprove: () => { this.charges.serviceRemoved = !this.charges.serviceRemoved; this.notify(this.charges.serviceRemoved ? 'Service charge removed' : 'Service charge restored'); },
+                    onApprove: async () => {
+                        const next = !this.charges.serviceRemoved;
+                        const data = await this.request(`${routes.invoice}/${this.invoice.id}/adjustments`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ serviceRemoved: next }),
+                        });
+                        if (data) this.notify(next ? 'Service charge removed' : 'Service charge restored');
+                    },
                 });
                 return;
             }
-            this.charges.serviceRemoved = !this.charges.serviceRemoved;
-            this.notify(this.charges.serviceRemoved ? 'Service charge removed' : 'Service charge restored');
+            const next = !this.charges.serviceRemoved;
+            this.request(`${routes.invoice}/${this.invoice.id}/adjustments`, {
+                method: 'PATCH',
+                body: JSON.stringify({ serviceRemoved: next }),
+            }).then((data) => data && this.notify(next ? 'Service charge removed' : 'Service charge restored'));
         },
 
         /* ---------------------------------------------------------------
@@ -421,36 +560,49 @@ export default function billingApp(posUrl, tablesUrl) {
             const p = Number(this.loyaltyDraft.points) || 0;
             return Math.min(p, this.customer.loyalty.points) * this.customer.loyalty.valuePerPoint;
         },
-        redeemLoyalty() {
+        async redeemLoyalty() {
             const p = Math.min(Number(this.loyaltyDraft.points) || 0, this.customer.loyalty.points);
             if (p <= 0) return;
-            this.loyaltyRedeemed = { points: p, amount: p * this.customer.loyalty.valuePerPoint };
-            this.customer.loyalty.points -= p;
+            const amount = p * this.customer.loyalty.valuePerPoint;
+            const data = await this.request(`${routes.invoice}/${this.invoice.id}/adjustments`, {
+                method: 'PATCH',
+                body: JSON.stringify({ loyaltyPoints: p, loyaltyAmount: amount }),
+            });
+            if (!data) return;
             this.back();
-            this.notify(`Redeemed ${p} points — ${this.money(this.loyaltyRedeemed.amount)}`, 'success');
+            this.notify(`Redeemed ${p} points — ${this.money(amount)}`, 'success');
         },
-        clearLoyalty() {
-            if (this.loyaltyRedeemed) this.customer.loyalty.points += this.loyaltyRedeemed.points;
-            this.loyaltyRedeemed = null;
+        async clearLoyalty() {
+            await this.request(`${routes.invoice}/${this.invoice.id}/adjustments`, {
+                method: 'PATCH',
+                body: JSON.stringify({ loyaltyPoints: 0, loyaltyAmount: 0 }),
+            });
         },
         openCoupon() {
             this.couponDraft = { code: this.coupon?.code || '' };
             this.open('coupon');
         },
-        applyCoupon() {
-            const code = this.couponDraft.code.trim().toUpperCase();
-            const pct = VALID_COUPONS[code];
-            if (!pct) {
-                this.notify(`"${code}" is invalid or expired`, 'warn');
-                return;
-            }
-            const base = this.subtotal - this.itemDiscountTotal - this.complimentaryTotal - this.billDiscountAmount;
-            this.coupon = { code, pct, amount: Math.round((base * pct) / 100) };
-            this.back();
-            this.notify(`Coupon ${code} applied — ${pct}% off`, 'success');
+        selectCoupon(coupon) {
+            this.couponDraft.code = coupon.code;
         },
-        clearCoupon() {
-            this.coupon = null;
+        async applyCoupon() {
+            const code = this.couponDraft.code.trim().toUpperCase();
+            const applied = await this.request(`${routes.invoice}/${this.invoice.id}/coupon`, {
+                method: 'POST',
+                body: JSON.stringify({ code }),
+            });
+            if (!applied) return;
+            await this.refreshBilling();
+            this.back();
+            this.notify(`Coupon ${code} applied`, 'success');
+        },
+        async clearCoupon() {
+            const data = await this.request(`${routes.invoice}/${this.invoice.id}/coupon`, { method: 'DELETE' });
+            if (!data) return;
+            await this.refreshBilling();
+            this.couponDraft = { code: '' };
+            this.back();
+            this.notify('Coupon removed', 'success');
         },
 
         /* ---------------------------------------------------------------
@@ -461,18 +613,45 @@ export default function billingApp(posUrl, tablesUrl) {
             if (!q) return this.customers.slice(0, 4);
             return this.customers.filter((c) => c.name.toLowerCase().includes(q) || c.phone.includes(q));
         },
-        pickCustomer(c) {
-            this.customer = { ...c, email: this.customer.email, gstin: '', businessName: '', address: '', loyalty: { points: c.points, valuePerPoint: 1 } };
+        async pickCustomer(c) {
+            const data = await this.request(`${routes.invoice}/${this.invoice.id}/adjustments`, {
+                method: 'PATCH',
+                body: JSON.stringify({ customerId: c.id }),
+            });
+            if (!data) return;
             this.back();
             this.notify(`${c.name} attached to ${this.invoice.code}`);
         },
-        quickAddCustomer() {
+        async quickAddCustomer() {
             const { name, phone } = this.customerDraft;
             if (!name.trim() || phone.trim().length < 10) return;
-            const c = { id: 'NEW', name: name.trim(), phone: phone.trim(), visits: 0, spend: 0, points: 0 };
-            this.customers.unshift(c);
+            const data = await this.request(`${routes.invoice}/${this.invoice.id}/adjustments`, {
+                method: 'PATCH',
+                body: JSON.stringify({ customer: { name: name.trim(), phone: phone.trim() } }),
+            });
+            if (!data) return;
             this.customerDraft = { name: '', phone: '' };
-            this.pickCustomer(c);
+            this.back();
+            this.notify(`${name.trim()} attached to ${this.invoice.code}`);
+        },
+        async saveGstInvoice() {
+            const data = await this.request(`${routes.invoice}/${this.invoice.id}/adjustments`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    isGstInvoice: this.gstInvoice,
+                    customer: {
+                        name: this.customer.name || 'Walk-in Customer',
+                        phone: this.customer.phone || '0000000000',
+                        email: this.customer.email || null,
+                        gstin: this.customer.gstin || null,
+                        businessName: this.customer.businessName || null,
+                        address: this.customer.address || null,
+                    },
+                }),
+            });
+            if (!data) return;
+            this.back();
+            this.notify('GST invoice details saved', 'success');
         },
 
         /* ---------------------------------------------------------------
@@ -491,7 +670,7 @@ export default function billingApp(posUrl, tablesUrl) {
             const a = Number(this.payDraft.amount) || 0;
             return Math.max(0, a - this.dueAmount);
         },
-        addPayment() {
+        async addPayment() {
             const amount = Number(this.payDraft.amount) || 0;
             if (amount <= 0 || this.dueAmount <= 0) return;
             const captured = Math.min(amount, this.dueAmount);
@@ -500,25 +679,29 @@ export default function billingApp(posUrl, tablesUrl) {
             if (['credit', 'debit'].includes(this.payDraft.method)) {
                 reference = [this.payDraft.cardType === 'credit' ? 'Credit' : 'Debit', this.payDraft.last4 && `••${this.payDraft.last4}`, reference].filter(Boolean).join(' ');
             }
-            this.payments.push({ method: this.payDraft.method, label, amount: captured, tendered: amount, reference, at: this.clock, status: 'success' });
+            const data = await this.request(`${routes.invoice}/${this.invoice.id}/payments`, {
+                method: 'POST',
+                body: JSON.stringify({ method: this.payDraft.method, amount: captured, tendered: amount, reference }),
+            });
+            if (!data) return;
             this.payDraft = { method: this.payDraft.method, amount: String(this.dueAmount - captured || ''), reference: '', cardType: 'credit', last4: '' };
             this.upiStatus = 'waiting';
         },
         removePayment(i) {
             this.payments.splice(i, 1);
         },
-        quickFull(method) {
+        async quickFull(method) {
             this.selectMethod(method);
             this.payDraft.amount = String(this.dueAmount);
-            this.addPayment();
+            await this.addPayment();
         },
         markUpiReceived() {
             this.upiStatus = 'paid';
         },
-        completePayment() {
+        async completePayment() {
             if (this.dueAmount > 0) return;
-            // backend: persist settlement + trigger the printer job
-            this.invoice.status = 'paid';
+            const data = await this.request(`${routes.invoice}/${this.invoice.id}/complete`, { method: 'POST' });
+            if (!data) return;
             this.open('success');
         },
 
@@ -657,14 +840,15 @@ export default function billingApp(posUrl, tablesUrl) {
             if (this.refundDraft.mode === 'item') return this.refundItemsAmount;
             return Number(this.refundDraft.amount) || 0;
         },
-        confirmRefund() {
+        async confirmRefund() {
             if (!this.refundDraft.reason || this.refundPreviewAmount <= 0) return;
-            const commit = (approvedBy) => {
+            const commit = async (approvedBy) => {
                 const amount = this.refundPreviewAmount;
-                this.refunds.push({ amount, method: this.refundDraft.method, reason: this.refundDraft.reason, mode: this.refundDraft.mode, approvedBy, at: this.clock });
-                if (this.refundDraft.mode === 'item') {
-                    this.items.filter((i) => this.refundDraft.items.includes(i.uid)).forEach((i) => { i.status = 'refunded'; i.refundReason = this.refundDraft.reason; i.refundAmount = this.netAmount(i); });
-                }
+                const data = await this.request(`${routes.invoice}/${this.invoice.id}/refunds`, {
+                    method: 'POST',
+                    body: JSON.stringify({ ...this.refundDraft, amount, approvedBy }),
+                });
+                if (!data) return;
                 this.closeAll();
                 this.notify(`Refund of ${this.money(amount)} recorded`, 'warn');
             };
@@ -687,9 +871,12 @@ export default function billingApp(posUrl, tablesUrl) {
             this.requestApproval({
                 title: 'Manager approval required',
                 detail: `Voiding ${this.invoice.code} (${this.money(this.grandTotal)}) needs manager authorization. This creates a reversal record — the original invoice is never deleted.`,
-                onApprove: () => {
-                    this.invoice.voided = true;
-                    this.invoice.voidReason = this.voidDraft.reason;
+                onApprove: async () => {
+                    const data = await this.request(`${routes.invoice}/${this.invoice.id}/void`, {
+                        method: 'POST',
+                        body: JSON.stringify({ reason: this.voidDraft.reason }),
+                    });
+                    if (!data) return;
                     this.closeAll();
                     this.notify(`${this.invoice.code} voided`, 'warn');
                 },
@@ -702,8 +889,9 @@ export default function billingApp(posUrl, tablesUrl) {
         openCloseTable() {
             this.open('closeTable');
         },
-        confirmCloseTable() {
-            // backend: free/clean the table and close the order
+        async confirmCloseTable() {
+            const data = await this.request(`${routes.invoice}/${this.invoice.id}/close`, { method: 'POST' });
+            if (!data) return;
             this.notify(`${this.order.table} closed — table sent for cleaning`, 'success');
             window.location.href = this.tablesUrl;
         },

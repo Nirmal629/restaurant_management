@@ -22,6 +22,7 @@ export default function customersApp() {
         initials,
 
         customers: (boot.customers || CUSTOMERS).map(normalize),
+        coupons: [...(boot.coupons || [])],
         discountLog: DISCOUNT_LOG,
         loading: false,
         query: '',
@@ -33,11 +34,14 @@ export default function customersApp() {
         showForm: false,
         showLoyalty: false,
         showNote: false,
+        showCoupons: false,
+        showCouponForm: false,
         saving: false,
         profileOpenArmed: false,
         draft: {},
         loyaltyDraft: { points: '', reason: '' },
         noteDraft: '',
+        couponDraft: {},
 
         init() {
             this.loading = true;
@@ -68,16 +72,19 @@ export default function customersApp() {
             this.showForm = this.stack.includes('form');
             this.showLoyalty = this.stack.includes('loyalty');
             this.showNote = this.stack.includes('note');
+            this.showCoupons = this.stack.includes('coupons');
+            this.showCouponForm = this.stack.includes('couponForm');
         },
         cleanupOverlayState() {
             this.syncOverlayFlags();
-            if (!this.showProfile && !this.showLoyalty && !this.showNote && !this.showForm) {
+            if (!this.showProfile && !this.showLoyalty && !this.showNote && !this.showForm && !this.showCoupons && !this.showCouponForm) {
                 this.activeId = null;
                 this.activeTab = 'overview';
             }
             if (!this.showForm) this.draft = {};
             if (!this.showLoyalty) this.loyaltyDraft = { points: '', reason: '' };
             if (!this.showNote) this.noteDraft = '';
+            if (!this.showCouponForm) this.couponDraft = {};
             this.openRowMenu = null;
             this.profileOpenArmed = false;
         },
@@ -242,6 +249,64 @@ export default function customersApp() {
             this.stack = ['profile'];
             this.cleanupOverlayState();
             this.notify(result.message || 'Note saved', 'success');
+        },
+
+        openCoupons() {
+            this.stack = ['coupons'];
+            this.syncOverlayFlags();
+        },
+        openCouponCreate() {
+            this.couponDraft = {
+                id: null, code: '', name: '', type: 'percent', value: '', minBillAmount: 0,
+                maxDiscountAmount: '', startsAt: '', expiresAt: '', usageLimit: '',
+                perCustomerLimit: 1, walkinAllowed: true, active: true,
+            };
+            this.stack = ['couponForm'];
+            this.syncOverlayFlags();
+            this.$nextTick(() => this.focusFirst());
+        },
+        openCouponEdit(coupon) {
+            this.couponDraft = { ...coupon };
+            this.stack = ['couponForm'];
+            this.syncOverlayFlags();
+            this.$nextTick(() => this.focusFirst());
+        },
+        async saveCoupon() {
+            const d = this.couponDraft;
+            if (!d.code?.trim() || !d.name?.trim() || !(Number(d.value) > 0)) return;
+
+            const result = await this.request(d.id ? `${routes.coupons}/${d.id}` : routes.coupons, {
+                method: d.id ? 'PUT' : 'POST',
+                body: JSON.stringify({
+                    code: d.code,
+                    name: d.name,
+                    type: d.type,
+                    value: Number(d.value),
+                    minBillAmount: Number(d.minBillAmount) || 0,
+                    maxDiscountAmount: d.maxDiscountAmount === '' || d.maxDiscountAmount === null ? null : Number(d.maxDiscountAmount),
+                    startsAt: d.startsAt || null,
+                    expiresAt: d.expiresAt || null,
+                    usageLimit: d.usageLimit === '' || d.usageLimit === null ? null : Number(d.usageLimit),
+                    perCustomerLimit: d.perCustomerLimit === '' || d.perCustomerLimit === null ? null : Number(d.perCustomerLimit),
+                    walkinAllowed: !!d.walkinAllowed,
+                    active: !!d.active,
+                }),
+            });
+            if (!result) return;
+
+            const index = this.coupons.findIndex((c) => c.id === result.coupon.id);
+            if (index >= 0) this.coupons.splice(index, 1, result.coupon);
+            else this.coupons.unshift(result.coupon);
+            this.notify(result.message || 'Coupon saved', 'success');
+            this.stack = ['coupons'];
+            this.cleanupOverlayState();
+        },
+        async deleteCoupon(coupon) {
+            if (!confirm(`Delete coupon ${coupon.code}?`)) return;
+            const result = await this.request(`${routes.coupons}/${coupon.id}`, { method: 'DELETE' });
+            if (!result) return;
+            this.coupons = this.coupons.filter((c) => c.id !== coupon.id);
+            this.notify(result.message || 'Coupon deleted', 'success');
         },
 
         replaceCustomer(customer) {

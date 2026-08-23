@@ -34,6 +34,11 @@ class Employee extends Model
     }
 
     /** Role defaults merged with this employee's own overrides — mirrors the frontend's effectivePermissions(). */
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'waiter_id');
+    }
+
     public function effectivePermissions(): array
     {
         $base = [];
