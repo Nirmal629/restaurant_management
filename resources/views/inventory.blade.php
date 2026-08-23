@@ -19,6 +19,7 @@
             recipes: @json(url('/inventory/recipes')),
             export: @json(route('inventory.export')),
         };
+        window.realtimeStreamUrl = @json(route('realtime.stream'));
     </script>
 </head>
 <body x-data="inventoryApp" x-cloak class="adm-root adm-shell bg-slate-100 text-slate-900 antialiased">

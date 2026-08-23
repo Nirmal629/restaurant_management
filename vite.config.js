@@ -24,6 +24,7 @@ export default defineConfig({
                 'resources/js/purchases.js',
                 'resources/js/expenses.js',
                 'resources/js/reports.js',
+                'resources/js/orders.js',
                 'resources/js/employees.js',
                 'resources/js/settings.js',
             ],

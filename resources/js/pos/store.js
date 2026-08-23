@@ -20,6 +20,7 @@ import {
     VENUE,
     WAITERS,
 } from './demo-data.js';
+import { subscribeRealtime } from '../shared/realtime.js';
 
 const inr = (n, decimals = 0) =>
     '₹' +
@@ -27,6 +28,9 @@ const inr = (n, decimals = 0) =>
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
     });
+const boot = window.posModule || {};
+const routes = window.posRoutes || {};
+const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
 
 /**
  * Alpine root for the POS terminal.
@@ -40,15 +44,15 @@ export default function posApp() {
         /* ---------------------------------------------------------------
            Reference data
            --------------------------------------------------------------- */
-        venue: VENUE,
-        operator: OPERATOR,
-        categories: CATEGORIES,
-        menu: MENU,
+        venue: boot.venue || VENUE,
+        operator: boot.operator || OPERATOR,
+        categories: boot.categories || CATEGORIES,
+        menu: boot.menu || MENU,
         modifierGroups: MODIFIER_GROUPS,
         floors: FLOORS,
         tables: TABLES,
-        customers: CUSTOMERS,
-        runningOrders: RUNNING_ORDERS,
+        customers: boot.customers || CUSTOMERS,
+        runningOrders: boot.runningOrders || RUNNING_ORDERS,
         kotHistory: KOT_HISTORY,
         kitchen: KITCHEN_LOAD,
         waiters: WAITERS,
@@ -63,6 +67,7 @@ export default function posApp() {
            --------------------------------------------------------------- */
         orderType: 'dinein', // dinein | takeaway | delivery
         order: {
+            id: boot.activeOrder?.id || null,
             code: 'ORD-1028',
             table: 'T08',
             floor: 'Ground Floor',
@@ -80,7 +85,7 @@ export default function posApp() {
             aggregator: '',
             notes: '',
         },
-        cart: [],
+        cart: (boot.activeOrder?.items || []).map((l) => ({ ...l })),
         nextUid: 200,
         nextKot: 1046,
         round: 3,
@@ -101,6 +106,7 @@ export default function posApp() {
         moreOpen: false,
         alerts: [],
         toast: null,
+        saving: false,
 
         // Per-dialog drafts
         tableFloor: 'ground',
@@ -121,12 +127,34 @@ export default function posApp() {
            Lifecycle
            --------------------------------------------------------------- */
         init() {
-            this.cart = SEED_CART.map((l) => ({ ...l, modifiers: [...l.modifiers] }));
+            if (!this.cart.length) this.cart = [];
+            if (boot.activeOrder) {
+                this.order.id = boot.activeOrder.id;
+                this.order.code = boot.activeOrder.code;
+                this.order.table = boot.activeOrder.table || this.order.table;
+                this.order.guests = boot.activeOrder.guests || this.order.guests;
+                this.order.waiter = boot.activeOrder.waiter || this.order.waiter;
+                this.order.customer = boot.activeOrder.customer || null;
+                this.order.token = boot.activeOrder.token || this.order.token;
+                this.orderType = boot.activeOrder.type || this.orderType;
+            }
             this.order.openedAt = Date.now() - 18 * 60000;
-            this.order.customer = null;
             this.alerts = READY_ALERTS.map((a) => ({ ...a }));
             this.tick();
             setInterval(() => this.tick(), 20000);
+            this._unsubscribeRealtime = subscribeRealtime(['pos', 'orders', 'tables', 'reservations', 'inventory', 'menu'], () => this.refreshFromServer());
+        },
+        async refreshFromServer() {
+            if (!routes.data || this.saving) return null;
+            try {
+                const response = await fetch(routes.data, { headers: { Accept: 'application/json' } });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) return null;
+                this.applyServerState(data);
+                return data;
+            } catch (error) {
+                return null;
+            }
         },
 
         tick() {
@@ -180,6 +208,54 @@ export default function posApp() {
             this.toast = { message, tone };
             clearTimeout(this._toastTimer);
             this._toastTimer = setTimeout(() => (this.toast = null), 2600);
+        },
+        applyServerState(data) {
+            if (!data) return;
+            if (data.venue) this.venue = data.venue;
+            if (data.operator) this.operator = data.operator;
+            if (data.categories) this.categories = data.categories;
+            if (data.menu) this.menu = data.menu;
+            if (data.customers) this.customers = data.customers;
+            if (data.runningOrders) this.runningOrders = data.runningOrders;
+            if (data.activeOrder) {
+                this.order.id = data.activeOrder.id;
+                this.order.code = data.activeOrder.code;
+                this.order.table = data.activeOrder.table || this.order.table;
+                this.order.guests = data.activeOrder.guests || this.order.guests;
+                this.order.waiter = data.activeOrder.waiter || this.order.waiter;
+                this.order.customer = data.activeOrder.customer || null;
+                this.order.token = data.activeOrder.token || this.order.token;
+                this.orderType = data.activeOrder.type || this.orderType;
+                this.cart = (data.activeOrder.items || []).map((l) => ({ ...l }));
+            }
+        },
+        async api(url, options = {}) {
+            if (!url || this.saving) return null;
+            this.saving = true;
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf(),
+                        ...(options.headers || {}),
+                    },
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const first = data.errors ? Object.values(data.errors).flat()[0] : null;
+                    this.notify(first || data.message || 'POS update failed', 'warn');
+                    return null;
+                }
+                this.applyServerState(data);
+                return data;
+            } catch (error) {
+                this.notify('Network error while updating POS', 'warn');
+                return null;
+            } finally {
+                this.saving = false;
+            }
         },
 
         /* ---------------------------------------------------------------
@@ -391,10 +467,20 @@ export default function posApp() {
             this.cancelDraft = { uid: l.uid, reason: '', note: '' };
             this.open('cancel');
         },
-        confirmCancel() {
+        async confirmCancel() {
             if (!this.cancelDraft.reason) return;
             const l = this.line(this.cancelDraft.uid);
             if (l) {
+                if (l.id && l.status !== 'unsent') {
+                    const data = await this.api(`${routes.itemCancel}/${l.id}/cancel`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ reason: this.cancelDraft.reason }),
+                    });
+                    if (!data) return;
+                    this.back();
+                    this.notify('Item cancelled - stock reversed if applicable', 'warn');
+                    return;
+                }
                 // backend: void the KOT line at the station printer + audit trail
                 l.status = 'cancelled';
                 l.cancelReason = this.cancelDraft.note
@@ -403,6 +489,26 @@ export default function posApp() {
             }
             this.back();
             this.notify('Item cancelled — kitchen notified', 'warn');
+        },
+
+        async moveToBilling() {
+            if (this.unsentLines.length) {
+                this.notify('Send all new items to KOT before billing.', 'warn');
+                return;
+            }
+            if (!this.order.id) {
+                this.notify('Create the order by sending KOT first.', 'warn');
+                return;
+            }
+
+            const data = await this.api(`${routes.billOrder}/${this.order.id}/billing`, {
+                method: 'POST',
+                body: JSON.stringify({}),
+            });
+
+            if (data?.redirect) {
+                window.location.assign(data.redirect);
+            }
         },
 
         /* ---------------------------------------------------------------
@@ -453,8 +559,28 @@ export default function posApp() {
         /* ---------------------------------------------------------------
            KOT dispatch
            --------------------------------------------------------------- */
-        sendKot() {
+        async sendKot() {
             if (!this.unsentLines.length) return;
+            const data = await this.api(routes.kot, {
+                method: 'POST',
+                body: JSON.stringify({
+                    orderId: this.order.id,
+                    orderType: this.orderType,
+                    table: this.order.table,
+                    guests: this.order.guests,
+                    customerId: Number.isInteger(Number(this.order.customer?.id)) ? Number(this.order.customer.id) : null,
+                    token: this.order.token,
+                    items: this.unsentLines.map((l) => ({
+                        menuItemId: l.ref,
+                        qty: l.qty,
+                        variant: l.variant,
+                        modifiers: l.modifiers || [],
+                        note: l.note,
+                    })),
+                }),
+            });
+            if (data) this.notify(data.message || 'KOT sent', 'success');
+            return;
             const kot = this.nextKot++;
             const at = this.clock;
             const lines = this.unsentLines.map((l) => ({
@@ -643,8 +769,7 @@ export default function posApp() {
            Payment
            --------------------------------------------------------------- */
         openPayment() {
-            this.payDraft = { method: 'cash', amount: String(this.due || this.total), reference: '' };
-            this.open('payment');
+            this.moveToBilling();
         },
         quickCash(v) {
             this.payDraft.amount = String(v);
@@ -720,15 +845,10 @@ export default function posApp() {
         moreActions: [
             { key: 'customer', label: 'Add / change customer', hint: 'F3' },
             { key: 'table', label: 'Change table', hint: 'F4' },
-            { key: 'transfer', label: 'Transfer table' },
-            { key: 'merge', label: 'Merge table' },
-            { key: 'split', label: 'Split order' },
             { key: 'waiter', label: 'Change waiter' },
             { key: 'notes', label: 'Order notes' },
             { key: 'kot', label: 'View KOT history' },
-            { key: 'reprint', label: 'Reprint last KOT' },
-            { key: 'running', label: 'Print running bill' },
-            { key: 'comp', label: 'Complimentary item', danger: false },
+            { key: 'billing', label: 'Send to billing' },
             { key: 'cancelOrder', label: 'Cancel order', danger: true },
         ],
         runMore(key) {
@@ -736,15 +856,10 @@ export default function posApp() {
             switch (key) {
                 case 'customer': return this.open('customer');
                 case 'table': return this.open('table');
-                case 'split': return this.openSplit();
                 case 'waiter': return this.open('waiter');
                 case 'notes': return this.open('notes');
                 case 'kot': return this.open('kot');
-                case 'transfer': return this.open('transfer');
-                case 'merge': return this.open('merge');
-                case 'reprint': return this.notify(`KOT #${this.kotHistory.at(-1)?.kot} reprinted`);
-                case 'running': return this.notify('Running bill sent to counter printer');
-                case 'comp': return this.notify('Complimentary item — pick an item to comp');
+                case 'billing': return this.moveToBilling();
                 case 'cancelOrder':
                     return this.requestApproval({
                         title: 'Cancel entire order?',
@@ -782,9 +897,9 @@ export default function posApp() {
                 F4: () => this.open('table'),
                 F6: () => this.sendKot(),
                 F7: () => this.openDiscount(),
-                F8: () => this.open('bill'),
+                F8: () => this.moveToBilling(),
                 F9: () => this.openPayment(),
-                F10: () => this.open('running'),
+                F10: () => this.open('kot'),
             };
             if (map[e.key]) {
                 e.preventDefault();

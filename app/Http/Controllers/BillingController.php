@@ -11,6 +11,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Refund;
+use App\Services\RealtimeNotifier;
+use App\Services\StockConsumptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +50,7 @@ class BillingController extends Controller
         return $this->billingResponse($invoice->fresh(['order.items.menuItem', 'payments', 'refunds']));
     }
 
-    public function item(Request $request, OrderItem $item): JsonResponse
+    public function item(Request $request, OrderItem $item, StockConsumptionService $stock): JsonResponse
     {
         $data = $request->validate([
             'action' => ['required', Rule::in(['discount', 'complimentary', 'cancel'])],
@@ -77,6 +79,10 @@ class BillingController extends Controller
         }
 
         if ($data['action'] === 'cancel') {
+            if ($item->status !== 'served') {
+                $stock->reverse($item, 'SALE_CANCEL_REVERSAL', $request->user()?->employee);
+            }
+
             $item->update([
                 'status' => 'cancelled',
                 'cancel_reason' => $data['reason'] ?? 'Cancelled during billing',
@@ -235,7 +241,7 @@ class BillingController extends Controller
         return $this->billingResponse($invoice->fresh(['order.table', 'order.items.menuItem', 'payments', 'refunds']));
     }
 
-    public function refund(Request $request, Invoice $invoice): JsonResponse
+    public function refund(Request $request, Invoice $invoice, StockConsumptionService $stock): JsonResponse
     {
         $data = $request->validate([
             'mode' => ['required', Rule::in(['full', 'partial', 'item'])],
@@ -263,7 +269,12 @@ class BillingController extends Controller
             ]);
 
             if ($data['mode'] === 'item') {
-                OrderItem::whereIn('id', $data['items'] ?? [])->update([
+                $items = OrderItem::whereIn('id', $data['items'] ?? [])->get();
+                foreach ($items as $item) {
+                    $stock->reverse($item, 'SALE_REFUND_REVERSAL', $request->user()?->employee);
+                }
+
+                OrderItem::whereIn('id', $items->pluck('id'))->update([
                     'bill_status' => 'refunded',
                     'refund_reason' => $data['reason'],
                 ]);
@@ -333,16 +344,27 @@ class BillingController extends Controller
         $query = Order::with(['table', 'customer', 'waiter', 'items.menuItem', 'invoice.payments', 'invoice.refunds']);
 
         if ($request->integer('order')) {
-            return $query->whereKey($request->integer('order'))->first();
+            $order = $query->whereKey($request->integer('order'))->first();
+
+            return $order && $this->canEnterBilling($order) ? $order : null;
         }
 
-        return $query->whereIn('status', ['open', 'billing', 'paid'])->latest('id')->first();
+        return $query
+            ->whereIn('status', ['open', 'billing', 'paid'])
+            ->latest('id')
+            ->get()
+            ->first(fn (Order $order) => $this->canEnterBilling($order));
     }
 
     private function ensureInvoice(Order $order): Invoice
     {
+        if (! $this->canEnterBilling($order)) {
+            abort(422, 'Serve or cancel all kitchen items before billing.');
+        }
+
         if ($order->status === 'open') {
             $order->update(['status' => 'billing']);
+            $order->table?->update(['status' => 'billing']);
         }
 
         return $order->invoice ?: Invoice::create([
@@ -350,6 +372,19 @@ class BillingController extends Controller
             'order_id' => $order->id,
             'status' => 'generated',
         ]);
+    }
+
+    private function canEnterBilling(Order $order): bool
+    {
+        if (in_array($order->status, ['billing', 'paid'], true)) {
+            return true;
+        }
+
+        if ($order->status !== 'open' || $order->items->isEmpty()) {
+            return false;
+        }
+
+        return $order->items->whereNotIn('status', ['served', 'cancelled'])->isEmpty();
     }
 
     private function invoiceResource(Invoice $invoice): array
@@ -437,6 +472,8 @@ class BillingController extends Controller
 
     private function billingResponse(Invoice $invoice): JsonResponse
     {
+        app(RealtimeNotifier::class)->touch(['billing', 'orders', 'tables', 'pos']);
+
         $fresh = $invoice->fresh(['order.table', 'order.customer', 'order.waiter', 'order.items.menuItem', 'payments', 'refunds']);
 
         return response()->json([

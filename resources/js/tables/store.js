@@ -1,4 +1,9 @@
 import { CONFIG, FLOORS, RESERVATIONS, TABLES, VENUE, OPERATOR, WAITERS } from './demo-data.js';
+import { subscribeRealtime } from '../shared/realtime.js';
+
+const boot = window.tablesModule || {};
+const routes = window.tablesRoutes || {};
+const csrf = () => document.querySelector("meta[name='csrf-token']")?.content || "";
 
 const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
@@ -14,9 +19,9 @@ export default function tablesApp(posUrl) {
         /* ---------------------------------------------------------------
            Reference data
            --------------------------------------------------------------- */
-        venue: VENUE,
-        operator: OPERATOR,
-        floors: FLOORS,
+        venue: boot.venue || VENUE,
+        operator: boot.operator || OPERATOR,
+        floors: boot.floors || FLOORS,
         waiterNames: WAITERS,
         config: CONFIG,
         posUrl,
@@ -24,8 +29,8 @@ export default function tablesApp(posUrl) {
         /* ---------------------------------------------------------------
            Mutable dummy state
            --------------------------------------------------------------- */
-        tables: TABLES.map((t) => ({ ...t, items: t.items ? [...t.items] : [] })),
-        reservations: RESERVATIONS.map((r) => ({ ...r })),
+        tables: (boot.tables || TABLES).map((t) => ({ ...t, items: t.items ? [...t.items] : [] })),
+        reservations: (boot.reservations || RESERVATIONS).map((r) => ({ ...r })),
         sectionLabels: { ground: ['Window Side', 'Entrance'], first: [], outdoor: ['Garden'], vip: [] },
         nextTableSeq: 25,
         nextReservationSeq: 209,
@@ -44,6 +49,7 @@ export default function tablesApp(posUrl) {
         dragId: null,
         stack: [],
         toast: null,
+        saving: false,
 
         // active record for whichever dialog is open
         activeTableId: null,
@@ -68,6 +74,19 @@ export default function tablesApp(posUrl) {
         init() {
             this.tick();
             setInterval(() => this.tick(), 30000);
+            this._unsubscribeRealtime = subscribeRealtime(['tables', 'reservations', 'orders', 'billing'], () => this.refreshTables());
+        },
+        async refreshTables() {
+            if (!routes.data || this.saving) return null;
+            try {
+                const response = await fetch(routes.data, { headers: { Accept: 'application/json' } });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) return null;
+                this.applyServerState(data);
+                return data;
+            } catch (error) {
+                return null;
+            }
         },
         tick() {
             this.clock = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -107,6 +126,39 @@ export default function tablesApp(posUrl) {
             clearTimeout(this._toastTimer);
             this._toastTimer = setTimeout(() => (this.toast = null), 2600);
         },
+        applyServerState(data) {
+            if (!data) return;
+            if (data.venue) this.venue = data.venue;
+            if (data.operator) this.operator = data.operator;
+            if (data.floors) this.floors = data.floors;
+            if (data.tables) this.tables = data.tables.map((t) => ({ ...t, items: t.items ? [...t.items] : [] }));
+            if (data.reservations) this.reservations = data.reservations.map((r) => ({ ...r }));
+        },
+        async api(url, options = {}) {
+            if (!url || this.saving) return null;
+            this.saving = true;
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf(),
+                        ...(options.headers || {}),
+                    },
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const first = data.errors ? Object.values(data.errors).flat()[0] : null;
+                    this.notify(first || data.message || 'Table update failed', 'warn');
+                    return null;
+                }
+                this.applyServerState(data);
+                return data;
+            } finally {
+                this.saving = false;
+            }
+        },
 
         /* ---------------------------------------------------------------
            Lookups
@@ -114,12 +166,28 @@ export default function tablesApp(posUrl) {
         table(id) {
             return this.tables.find((t) => t.id === id);
         },
+        tableUrl(t, suffix = '') {
+            const id = typeof t === 'object' ? t.dbId : this.table(t)?.dbId;
+            return id ? `${routes.base}/${id}${suffix}` : null;
+        },
         reservation(id) {
             return this.reservations.find((r) => r.id === id);
         },
         reservationFor(tableId) {
             const t = this.table(tableId);
             return t?.reservationId ? this.reservation(t.reservationId) : null;
+        },
+        reservationTime(card) {
+            return this.reservationFor(card.id)?.time || card.reservationTime || 'Reserved';
+        },
+        reservationGuestLine(card) {
+            const reservation = this.reservationFor(card.id);
+            const customer = reservation?.customer || card.reservationCustomer || 'Guest';
+            const guests = reservation?.guests || card.reservationGuests || card.seats || 0;
+            return `${customer} - ${guests} guest${Number(guests) === 1 ? '' : 's'}`;
+        },
+        cleaningLabel(card) {
+            return typeof card.since === 'number' ? `${card.since} min` : 'Cleaning';
         },
         floorLabel(key) {
             return this.floors.find((f) => f.key === key)?.label || key;
@@ -353,21 +421,18 @@ export default function tablesApp(posUrl) {
             this.startDraft = { tableId: card.id, guests: Math.min(2, card.seats), waiter: this.operator.name, customer: '', note: '' };
             this.swap('start');
         },
-        confirmStart() {
+        async confirmStart() {
             const t = this.table(this.startDraft.tableId);
             if (!t) return;
-            // backend: create the order, then hand off to POS with this context
-            t.status = 'occupied';
-            t.guests = this.startDraft.guests;
-            t.waiter = this.startDraft.waiter;
-            t.customer = this.startDraft.customer || 'Walk-in';
-            t.orderCode = 'ORD-' + (1040 + Math.floor(Math.random() * 900));
-            t.amount = 0;
-            t.since = 0;
-            t.kitchen = { new: 0, prep: 0, ready: 0 };
-            t.items = [];
-            this.closeAll();
-            this.goToPos(t);
+            const data = await this.api(this.tableUrl(t, '/start'), {
+                method: 'POST',
+                body: JSON.stringify({
+                    guests: this.startDraft.guests,
+                    customer: this.startDraft.customer,
+                    note: this.startDraft.note,
+                }),
+            });
+            if (data?.redirect) window.location.href = data.redirect;
         },
 
         /* ---------------------------------------------------------------
@@ -377,17 +442,33 @@ export default function tablesApp(posUrl) {
             this.reserveDraft = { tableId: card.id, customer: '', phone: '', time: '', guests: Math.min(2, card.seats), notes: '' };
             this.swap('reserve');
         },
-        confirmReserve() {
+        async confirmReserve() {
             const d = this.reserveDraft;
             if (!d.customer.trim() || !d.time.trim()) return;
             const t = this.table(d.tableId);
             if (!t) return;
-            const id = 'RES-' + this.nextReservationSeq++;
-            this.reservations.push({ id, tableId: t.id, customer: d.customer, phone: d.phone, date: 'Today', time: d.time, guests: d.guests, notes: d.notes, status: 'CONFIRMED' });
-            t.status = 'reserved';
-            t.reservationId = id;
+            const data = await this.api(this.tableUrl(t, '/reserve'), {
+                method: 'POST',
+                body: JSON.stringify({ ...d, time: this.normalizeTime(d.time), date: new Date().toISOString().slice(0, 10) }),
+            });
+            if (!data) return;
             this.closeAll();
-            this.notify(`Reservation ${id} created for ${t.id}`, 'success');
+            this.notify(data.message || `Reservation created for ${t.id}`, 'success');
+        },
+        normalizeTime(value) {
+            const text = String(value || '').trim();
+            const ampm = text.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+            if (ampm) {
+                let hour = Number(ampm[1]);
+                const minute = ampm[2] || '00';
+                const suffix = ampm[3].toUpperCase();
+                if (suffix === 'PM' && hour < 12) hour += 12;
+                if (suffix === 'AM' && hour === 12) hour = 0;
+                return `${String(hour).padStart(2, '0')}:${minute}`;
+            }
+            const clock = text.match(/^(\d{1,2}):(\d{2})$/);
+            if (clock) return `${String(Number(clock[1])).padStart(2, '0')}:${clock[2]}`;
+            return text;
         },
 
         /* ---------------------------------------------------------------
@@ -430,28 +511,27 @@ export default function tablesApp(posUrl) {
         /* ---------------------------------------------------------------
            Disable / enable / cleaning
            --------------------------------------------------------------- */
-        markDisabled(card) {
+        async markDisabled(card) {
             const t = this.table(card.id);
             if (!t) return;
-            t.status = 'disabled';
+            const data = await this.api(this.tableUrl(t, '/status'), { method: 'PATCH', body: JSON.stringify({ status: 'disabled' }) });
+            if (!data) return;
             this.closeAll();
             this.notify(`${t.id} marked disabled`, 'warn');
         },
-        markAvailable(card) {
-            (card.ids || [card.id]).forEach((id) => {
-                const t = this.table(id);
-                if (!t) return;
-                Object.assign(t, { status: 'available', guests: undefined, waiter: undefined, customer: undefined, orderCode: undefined, amount: undefined, since: undefined, kitchen: undefined, items: [], groupId: undefined, groupPrimary: undefined, reservationId: undefined });
-            });
+        async markAvailable(card) {
+            const t = this.table(card.id);
+            if (!t) return;
+            const data = await this.api(this.tableUrl(t, '/status'), { method: 'PATCH', body: JSON.stringify({ status: 'available' }) });
+            if (!data) return;
             this.closeAll();
             this.notify(`${card.label} is now available`, 'success');
         },
-        markCleaningStart(card) {
-            (card.ids || [card.id]).forEach((id) => {
-                const t = this.table(id);
-                if (!t) return;
-                Object.assign(t, { status: 'cleaning', since: 0, guests: undefined, waiter: undefined, customer: undefined, orderCode: undefined, amount: undefined, kitchen: undefined, items: [], groupId: undefined, groupPrimary: undefined });
-            });
+        async markCleaningStart(card) {
+            const t = this.table(card.id);
+            if (!t) return;
+            const data = await this.api(this.tableUrl(t, '/status'), { method: 'PATCH', body: JSON.stringify({ status: 'cleaning' }) });
+            if (!data) return;
             this.closeAll();
             this.notify(`${card.label} sent for cleaning`);
         },
@@ -612,12 +692,14 @@ export default function tablesApp(posUrl) {
             this.addTableDraft = { number: 'T' + this.nextTableSeq, name: '', floor: this.activeFloor !== 'all' ? this.activeFloor : 'ground', capacity: 4, shape: 'square' };
             this.open('addTable');
         },
-        confirmAddTable() {
+        async confirmAddTable() {
             const d = this.addTableDraft;
             if (!d.number.trim()) return;
-            // backend: persist the new table
-            this.tables.push({ id: d.number.trim(), floor: d.floor, seats: Number(d.capacity) || 2, shape: d.shape, status: 'available', name: d.name });
-            this.nextTableSeq++;
+            const data = await this.api(routes.store, {
+                method: 'POST',
+                body: JSON.stringify({ code: d.number.trim(), name: d.name, floor: d.floor, seats: Number(d.capacity) || 2, shape: d.shape }),
+            });
+            if (!data) return;
             this.closeAll();
             this.notify(`${d.number} added to ${this.floorLabel(d.floor)}`, 'success');
         },
@@ -626,15 +708,15 @@ export default function tablesApp(posUrl) {
             this.editTableDraft = { id: t.id, number: t.id, name: t.name || '', floor: t.floor, capacity: t.seats, shape: t.shape, active: t.status !== 'disabled' };
             this.swap('editTable');
         },
-        confirmEditTable() {
+        async confirmEditTable() {
             const d = this.editTableDraft;
             const t = this.table(d.id);
             if (!t) return;
-            t.name = d.name;
-            t.floor = d.floor;
-            t.seats = Number(d.capacity) || t.seats;
-            t.shape = d.shape;
-            t.status = d.active ? (t.status === 'disabled' ? 'available' : t.status) : 'disabled';
+            const data = await this.api(this.tableUrl(t), {
+                method: 'PUT',
+                body: JSON.stringify({ name: d.name, floor: d.floor, seats: Number(d.capacity) || t.seats, shape: d.shape, active: d.active }),
+            });
+            if (!data) return;
             this.closeAll();
             this.notify(`${t.id} updated`, 'success');
         },
@@ -642,12 +724,14 @@ export default function tablesApp(posUrl) {
             this.addFloorDraft = { name: '', description: '', order: this.floors.length + 1, active: true };
             this.open('addFloor');
         },
-        confirmAddFloor() {
+        async confirmAddFloor() {
             const d = this.addFloorDraft;
             if (!d.name.trim()) return;
-            const key = d.name.trim().toLowerCase().replace(/\s+/g, '-');
-            this.floors.push({ key, label: d.name.trim() });
-            this.sectionLabels[key] = [];
+            const data = await this.api(routes.floors, {
+                method: 'POST',
+                body: JSON.stringify({ name: d.name, description: d.description, order: d.order, active: d.active }),
+            });
+            if (!data) return;
             this.closeAll();
             this.notify(`Floor "${d.name}" added`, 'success');
         },
@@ -705,3 +789,4 @@ export default function tablesApp(posUrl) {
         },
     };
 }
+

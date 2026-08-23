@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Kitchen Display · Royal Bengal Restaurant</title>
     {{--
         pos.css supplies the shared "operational terminal" layout primitives
@@ -11,6 +12,15 @@
         so the KDS matches the POS and Floor/Table screens exactly.
     --}}
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/kds.css', 'resources/js/kds.js'])
+    <script>
+        window.kdsModule = @json($kdsPayload);
+        window.kdsRoutes = {
+            data: @json(route('kds.data')),
+            orders: @json(url('/kds/orders')),
+            items: @json(url('/kds/items')),
+        };
+        window.realtimeStreamUrl = @json(route('realtime.stream'));
+    </script>
 </head>
 
 {{--

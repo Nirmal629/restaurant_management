@@ -11,12 +11,14 @@ class OrderItem extends Model
         'allergy_note', 'kitchen_station_id', 'kot_round', 'status', 'unavailable_reason',
         'cancel_reason', 'sent_at', 'ready_at',
         'bill_status', 'bill_discount_amount', 'comp_reason', 'comp_by', 'refund_reason', 'refund_amount',
+        'stock_consumed',
     ];
 
     protected $casts = [
         'modifiers' => 'array',
         'sent_at' => 'datetime',
         'ready_at' => 'datetime',
+        'stock_consumed' => 'boolean',
     ];
 
     public function order()

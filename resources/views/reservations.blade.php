@@ -3,8 +3,19 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Reservations · Royal Bengal Restaurant</title>
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/admin.css', 'resources/js/reservations.js'])
+    <script>
+        window.reservationsModule = @json($reservationsPayload);
+        window.reservationsRoutes = {
+            data: @json(route('reservations.data')),
+            store: @json(route('reservations.store')),
+            base: @json(url('/reservations')),
+            pos: @json(route('pos')),
+        };
+        window.realtimeStreamUrl = @json(route('realtime.stream'));
+    </script>
 </head>
 <body x-data="reservationsApp" x-cloak class="adm-root adm-shell bg-slate-100 text-slate-900 antialiased">
 

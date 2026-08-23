@@ -35,7 +35,7 @@
             More
         </button>
 
-        <button type="button" @click="open('bill')"
+        <button type="button" @click="moveToBilling()"
                 class="flex h-10 flex-col items-center justify-center gap-0.5 rounded-md bg-slate-800 text-[10.5px] font-bold uppercase tracking-wide text-white hover:bg-slate-900">
             <x-pos.icon name="receipt" class="h-4 w-4" />
             Bill

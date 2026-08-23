@@ -1,4 +1,5 @@
 import { overlayMixin, paginationMixin, money } from '../shared/kit.js';
+import { subscribeRealtime } from '../shared/realtime.js';
 import { CATEGORIES, INGREDIENTS, LEDGER, RECIPES, STOCK_COUNTS, STORAGE_LOCATIONS, SUPPLIERS, TX_TYPES, UNITS, VENUE, WASTAGE, WASTAGE_REASONS } from './demo-data.js';
 
 export default function inventoryApp() {
@@ -48,6 +49,10 @@ export default function inventoryApp() {
         adjustDraft: {},
         countDraft: null,
         recipeDraft: { itemName: '', itemId: null, lines: [] },
+
+        init() {
+            this._unsubscribeRealtime = subscribeRealtime(['inventory', 'menu', 'pos'], () => this.refreshInventory());
+        },
 
         open(name) {
             this.stack = [name];
@@ -382,6 +387,29 @@ export default function inventoryApp() {
             this.categories = [...new Set([...this.categories, ...this.ingredients.map((i) => i.category).filter(Boolean)])].sort();
             this.locations = [...new Set([...this.locations, ...this.ingredients.map((i) => i.location).filter(Boolean)])].sort();
             this.suppliers = [...new Set([...this.suppliers, ...this.ingredients.map((i) => i.supplier).filter(Boolean)])].sort();
+        },
+        applyPayload(data) {
+            if (!data) return;
+            if (data.ingredients) this.ingredients = data.ingredients.map((i) => ({ ...i }));
+            if (data.supplierRecords) this.supplierRecords = data.supplierRecords.map((s) => ({ ...s, items: [...(s.items || [])] }));
+            if (data.ledger) this.ledger = data.ledger.map((l) => ({ ...l }));
+            if (data.wastage) this.wastage = data.wastage.map((w) => ({ ...w }));
+            if (data.stockCounts) this.stockCounts = data.stockCounts.map((s) => ({ ...s, lines: (s.lines || []).map((l) => ({ ...l })) }));
+            if (data.recipes) this.recipes = data.recipes;
+            if (data.menuItems) this.menuItems = data.menuItems;
+            this.refreshPicklists();
+        },
+        async refreshInventory() {
+            if (!routes.data || this.saving) return null;
+            try {
+                const response = await fetch(routes.data, { headers: { Accept: 'application/json' } });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) return null;
+                this.applyPayload(data);
+                return data;
+            } catch (error) {
+                return null;
+            }
         },
         async request(url, options = {}) {
             if (!url || this.saving) return null;

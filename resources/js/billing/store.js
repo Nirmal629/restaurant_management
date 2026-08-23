@@ -18,6 +18,7 @@ import {
     VOID_REASONS,
     WAITERS,
 } from './demo-data.js';
+import { subscribeRealtime } from '../shared/realtime.js';
 
 const inr = (n, decimals = 0) =>
     '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -117,6 +118,7 @@ export default function billingApp(posUrl, tablesUrl) {
         init() {
             this.tick();
             setInterval(() => this.tick(), 30000);
+            this._unsubscribeRealtime = subscribeRealtime(['billing', 'orders', 'tables', 'pos'], () => this.refreshBilling());
         },
         tick() {
             this.clock = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });

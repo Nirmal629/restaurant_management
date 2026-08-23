@@ -1,15 +1,20 @@
 import { overlayMixin, paginationMixin, money, formatDate } from '../shared/kit.js';
 import { CANCEL_REASONS, FLOORS, OCCASIONS, OPERATOR, RESERVATIONS, SOURCES, TABLES, VENUE, WAITERS } from './demo-data.js';
+import { subscribeRealtime } from '../shared/realtime.js';
+
+const boot = window.reservationsModule || {};
+const routes = window.reservationsRoutes || {};
+const csrf = () => document.querySelector("meta[name='csrf-token']")?.content || "";
 
 export default function reservationsApp() {
     return {
         ...overlayMixin(),
         ...paginationMixin(8),
 
-        venue: VENUE,
-        operator: OPERATOR,
-        floors: FLOORS,
-        tables: TABLES,
+        venue: boot.venue || VENUE,
+        operator: boot.operator || OPERATOR,
+        floors: boot.floors || FLOORS,
+        tables: boot.tables || TABLES,
         sources: SOURCES,
         occasions: OCCASIONS,
         waiters: WAITERS,
@@ -17,7 +22,7 @@ export default function reservationsApp() {
         money,
         formatDate,
 
-        reservations: RESERVATIONS.map((r) => ({ ...r, history: [...r.history] })),
+        reservations: (boot.reservations || RESERVATIONS).map((r) => ({ ...r, history: [...(r.history || [])] })),
         todayIso: new Date().toISOString().slice(0, 10),
 
         view: 'today', // today | list | calendar
@@ -31,6 +36,7 @@ export default function reservationsApp() {
         dateFrom: '',
         dateTo: '',
         loading: false,
+        saving: false,
 
         openRowMenu: null,
         activeId: null,
@@ -41,10 +47,60 @@ export default function reservationsApp() {
 
         init() {
             this.simulateLoad();
+            this._unsubscribeRealtime = subscribeRealtime(['reservations', 'tables'], () => this.refreshReservations());
         },
         simulateLoad() {
             this.loading = true;
             setTimeout(() => (this.loading = false), 500);
+        },
+        async refreshReservations() {
+            if (!routes.data || this.saving) return null;
+            try {
+                const response = await fetch(routes.data, { headers: { Accept: 'application/json' } });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) return null;
+                this.applyServerState(data);
+                return data;
+            } catch (error) {
+                return null;
+            }
+        },
+        applyServerState(data) {
+            if (!data) return;
+            if (data.venue) this.venue = data.venue;
+            if (data.operator) this.operator = data.operator;
+            if (data.floors) this.floors = data.floors;
+            if (data.tables) this.tables = data.tables;
+            if (data.reservations) this.reservations = data.reservations.map((r) => ({ ...r, history: [...(r.history || [])] }));
+        },
+        async api(url, options = {}) {
+            if (!url || this.saving) return null;
+            this.saving = true;
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf(),
+                        ...(options.headers || {}),
+                    },
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const first = data.errors ? Object.values(data.errors).flat()[0] : null;
+                    this.notify(first || data.message || 'Reservation update failed', 'warn');
+                    return null;
+                }
+                this.applyServerState(data);
+                return data;
+            } finally {
+                this.saving = false;
+            }
+        },
+        reservationUrl(r, suffix = '') {
+            const id = typeof r === 'object' ? r.dbId : this.reservation(r)?.dbId;
+            return id ? `${routes.base}/${id}${suffix}` : null;
         },
 
         reservation(id) {
@@ -190,52 +246,52 @@ export default function reservationsApp() {
         /* ---------------------------------------------------------------
            Lifecycle actions
            --------------------------------------------------------------- */
-        confirmReservation(r) {
-            r.status = 'confirmed';
-            this.log(r, 'Marked Confirmed');
-            this.notify(`${r.id} confirmed`, 'success');
+        async confirmReservation(r) {
+            const data = await this.api(this.reservationUrl(r, '/status'), { method: 'PATCH', body: JSON.stringify({ status: 'confirmed' }) });
+            if (data) this.notify(`${r.id} confirmed`, 'success');
         },
-        markArrived(r) {
-            r.status = 'arrived';
-            this.log(r, 'Marked Arrived');
-            this.notify(`${r.customer} marked arrived`);
+        async markArrived(r) {
+            const data = await this.api(this.reservationUrl(r, '/status'), { method: 'PATCH', body: JSON.stringify({ status: 'arrived' }) });
+            if (data) this.notify(`${r.customer} marked arrived`);
         },
         openSeat(r) {
             this.openRowMenu = null;
             this.seatDraft = { id: r.id, table: r.table };
             this.open('seat');
         },
-        confirmSeat() {
+        async confirmSeat() {
             const r = this.reservation(this.seatDraft.id);
             if (!r || !this.seatDraft.table) return;
-            r.table = this.seatDraft.table;
-            r.status = 'seated';
-            this.log(r, `Seated at ${this.seatDraft.table}`);
+            const data = await this.api(this.reservationUrl(r, '/seat'), { method: 'POST', body: JSON.stringify({ table: this.seatDraft.table }) });
+            if (!data) return;
             this.closeAll();
-            this.notify(`${r.customer} seated at ${r.table} — open POS to start the order`, 'success');
+            this.notify(r.customer + ' seated at ' + this.seatDraft.table, 'success');
+            if (data.redirect) window.location.href = data.redirect;
         },
         openChangeTable(r) {
             this.openRowMenu = null;
             this.seatDraft = { id: r.id, table: r.table };
             this.swap('seat');
         },
-        markNoShow(r) {
-            r.status = 'no_show';
-            this.log(r, 'Marked No Show');
-            this.notify(`${r.customer} marked no-show`, 'warn');
+        async markNoShow(r) {
+            const data = await this.api(this.reservationUrl(r, '/status'), { method: 'PATCH', body: JSON.stringify({ status: 'no_show' }) });
+            if (data) this.notify(r.customer + ' marked no-show', 'warn');
         },
         openCancel(r) {
             this.openRowMenu = null;
             this.cancelDraft = { id: r.id, reason: '' };
             this.open('cancel');
         },
-        confirmCancel() {
+        async confirmCancel() {
             const r = this.reservation(this.cancelDraft.id);
             if (!r || !this.cancelDraft.reason) return;
-            r.status = 'cancelled';
-            this.log(r, `Cancelled — ${this.cancelDraft.reason}`);
+            const data = await this.api(this.reservationUrl(r, '/status'), {
+                method: 'PATCH',
+                body: JSON.stringify({ status: 'cancelled', reason: this.cancelDraft.reason }),
+            });
+            if (!data) return;
             this.closeAll();
-            this.notify(`${r.id} cancelled`, 'warn');
+            this.notify(r.id + ' cancelled', 'warn');
         },
 
         /* ---------------------------------------------------------------
@@ -251,18 +307,19 @@ export default function reservationsApp() {
             this.createDraft = { id: r.id, customer: r.customer, phone: r.phone, email: r.email, date: r.date, time: r.time, guests: r.guests, floor: r.floor, table: r.table, occasion: r.occasion, request: r.request, source: r.source, notes: '' };
             this.open('create');
         },
-        saveReservation() {
+        async saveReservation() {
             const d = this.createDraft;
             if (!d.customer.trim() || d.phone.trim().length < 10) return;
+            const body = JSON.stringify({ ...d, deposit: d.deposit || 0 });
             if (d.id) {
                 const r = this.reservation(d.id);
-                Object.assign(r, d);
-                this.log(r, 'Reservation details updated');
+                const data = await this.api(this.reservationUrl(r), { method: 'PUT', body });
+                if (!data) return;
                 this.notify(`${r.id} updated`, 'success');
             } else {
-                const r = { id: 'RES-' + (300 + this.reservations.length), status: 'pending', deposit: 0, createdBy: this.operator.name, history: [{ at: 'Just now', text: `Reservation created via ${d.source}` }], ...d };
-                this.reservations.unshift(r);
-                this.notify(`${r.id} created`, 'success');
+                const data = await this.api(routes.store, { method: 'POST', body });
+                if (!data) return;
+                this.notify(`${data.reservation?.id || 'Reservation'} created`, 'success');
             }
             this.closeAll();
         },
@@ -289,3 +346,5 @@ export default function reservationsApp() {
         },
     };
 }
+
+

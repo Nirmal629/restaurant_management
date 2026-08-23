@@ -10,6 +10,7 @@ use App\Models\StockCount;
 use App\Models\StockLedgerEntry;
 use App\Models\Supplier;
 use App\Models\Wastage;
+use App\Services\RealtimeNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,7 @@ class InventoryController extends Controller
         $ingredient = Ingredient::create($this->ingredientAttributes($data) + ['code' => $this->nextIngredientCode()]);
 
         $this->recordLedger($ingredient, 'OPENING', 'Opening stock', 0, (float) $ingredient->current_stock);
+        $this->touchInventory();
 
         return response()->json(['ingredient' => $this->ingredientResource($ingredient->fresh('supplier')), 'ledger' => $this->ledger(), 'message' => "{$ingredient->name} added"], 201);
     }
@@ -51,6 +53,7 @@ class InventoryController extends Controller
         if ($change !== 0.0) {
             $this->recordLedger($ingredient, 'ADJUSTMENT', 'Ingredient master update', $previous, $change);
         }
+        $this->touchInventory();
 
         return response()->json(['ingredient' => $this->ingredientResource($ingredient->fresh('supplier')), 'ledger' => $this->ledger(), 'message' => "{$ingredient->name} updated"]);
     }
@@ -68,6 +71,7 @@ class InventoryController extends Controller
         $ingredient->update(['current_stock' => max(0, $previous + $change)]);
         $actualChange = (float) $ingredient->current_stock - $previous;
         $this->recordLedger($ingredient, $data['type'], $data['reason'] ?? null, $previous, $actualChange);
+        $this->touchInventory();
 
         return response()->json([
             'ingredient' => $this->ingredientResource($ingredient->fresh('supplier')),
@@ -80,6 +84,7 @@ class InventoryController extends Controller
     {
         $name = $ingredient->name;
         $ingredient->delete();
+        $this->touchInventory();
 
         return response()->json(['ingredients' => $this->ingredients(), 'ledger' => $this->ledger(), 'message' => "{$name} deleted"]);
     }
@@ -87,6 +92,7 @@ class InventoryController extends Controller
     public function storeSupplier(Request $request): JsonResponse
     {
         $supplier = Supplier::create($this->supplierAttributes($this->validatedSupplier($request)));
+        $this->touchInventory(['inventory']);
 
         return response()->json([
             'supplier' => $this->supplierResource($supplier),
@@ -99,6 +105,7 @@ class InventoryController extends Controller
     public function updateSupplier(Request $request, Supplier $supplier): JsonResponse
     {
         $supplier->update($this->supplierAttributes($this->validatedSupplier($request, $supplier)));
+        $this->touchInventory(['inventory']);
 
         return response()->json([
             'supplier' => $this->supplierResource($supplier->fresh('ingredients')),
@@ -117,6 +124,7 @@ class InventoryController extends Controller
 
         $name = $supplier->name;
         $supplier->delete();
+        $this->touchInventory(['inventory']);
 
         return response()->json([
             'suppliers' => $this->suppliers(),
@@ -154,6 +162,7 @@ class InventoryController extends Controller
         ]);
 
         $this->recordLedger($ingredient, 'WASTAGE', $wastage->code, $previous, $actualChange, $wastage->employee_id);
+        $this->touchInventory();
 
         return response()->json([
             'ingredient' => $this->ingredientResource($ingredient->fresh('supplier')),
@@ -168,6 +177,7 @@ class InventoryController extends Controller
         $record = Wastage::where('code', $wastage)->firstOrFail();
         $code = $record->code;
         $record->delete();
+        $this->touchInventory(['inventory']);
 
         return response()->json(['wastage' => $this->wastage(), 'message' => "{$code} deleted"]);
     }
@@ -207,6 +217,7 @@ class InventoryController extends Controller
                 }
             }
         });
+        $this->touchInventory();
 
         return response()->json([
             'ingredients' => $this->ingredients(),
@@ -221,6 +232,7 @@ class InventoryController extends Controller
         $record = StockCount::where('code', $count)->firstOrFail();
         $code = $record->code;
         $record->delete();
+        $this->touchInventory(['inventory']);
 
         return response()->json(['stockCounts' => $this->stockCounts(), 'message' => "{$code} deleted"]);
     }
@@ -244,6 +256,7 @@ class InventoryController extends Controller
                 'unit' => $line['unit'],
             ]);
         }
+        $this->touchInventory();
 
         return response()->json(['recipes' => $this->recipes(), 'message' => "{$menuItem->name} recipe saved"]);
     }
@@ -293,6 +306,11 @@ class InventoryController extends Controller
             'employees' => Employee::orderBy('name')->pluck('name')->values()->all(),
             'menuItems' => MenuItem::where('stock_tracked', true)->orderBy('name')->get(['id', 'name'])->values()->all(),
         ];
+    }
+
+    private function touchInventory(array $topics = ['inventory', 'menu', 'pos']): void
+    {
+        app(RealtimeNotifier::class)->touch($topics);
     }
 
     private function ingredients(): array

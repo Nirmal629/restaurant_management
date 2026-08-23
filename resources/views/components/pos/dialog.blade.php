@@ -20,9 +20,9 @@
 @endphp
 
 <div
-    x-show="stack.includes('{{ $name }}')"
+    x-show="overlay === '{{ $name }}'"
     x-cloak
-    :style="'z-index:' + (60 + stack.indexOf('{{ $name }}'))"
+    style="z-index: 60"
     class="fixed inset-0 flex {{ $drawer ? 'justify-end' : 'items-center justify-center p-4' }}"
     role="dialog"
     aria-modal="true"

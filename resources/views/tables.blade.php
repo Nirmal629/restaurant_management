@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Floor &amp; Tables · Royal Bengal Restaurant</title>
     {{--
         pos.css supplies the shared "operational terminal" layout primitives
@@ -11,6 +12,17 @@
         matches the POS screen's design language pixel-for-pixel.
     --}}
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/tables.css', 'resources/js/tables.js'])
+    <script>
+        window.tablesModule = @json($tablesPayload);
+        window.tablesRoutes = {
+            data: @json(route('tables.data')),
+            store: @json(route('tables.store')),
+            floors: @json(route('tables.floors.store')),
+            base: @json(url('/tables')),
+            pos: @json(route('pos')),
+        };
+        window.realtimeStreamUrl = @json(route('realtime.stream'));
+    </script>
 </head>
 
 {{--

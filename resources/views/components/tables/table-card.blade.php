@@ -62,8 +62,8 @@
         {{-- RESERVED --}}
         <template x-if="{{ $card }}.status === 'reserved'">
             <div class="mt-0.5 space-y-0.5">
-                <p class="pos-num text-[12px] font-black text-violet-800" x-text="reservationFor({{ $card }}.id)?.time"></p>
-                <p class="truncate text-[10.5px] font-semibold text-violet-700" x-text="reservationFor({{ $card }}.id)?.customer + ' · ' + reservationFor({{ $card }}.id)?.guests + ' guests'"></p>
+                <p class="pos-num text-[12px] font-black text-violet-800" x-text="reservationTime({{ $card }})"></p>
+                <p class="truncate text-[10.5px] font-semibold text-violet-700" x-text="reservationGuestLine({{ $card }})"></p>
             </div>
         </template>
 
@@ -77,7 +77,7 @@
 
         {{-- CLEANING --}}
         <template x-if="{{ $card }}.status === 'cleaning'">
-            <p class="pos-num mt-1 text-[10.5px] font-semibold text-slate-500" x-text="{{ $card }}.since + ' min'"></p>
+            <p class="pos-num mt-1 text-[10.5px] font-semibold text-slate-500" x-text="cleaningLabel({{ $card }})"></p>
         </template>
 
         {{-- DISABLED --}}
@@ -108,3 +108,4 @@
         </button>
     </div>
 </button>
+

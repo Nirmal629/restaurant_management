@@ -1,4 +1,9 @@
 import { CANCEL_REASONS, CONFIG, OPERATOR, STATIONS, TICKETS, UNAVAILABLE_REASONS, VENUE } from './demo-data.js';
+import { subscribeRealtime } from '../shared/realtime.js';
+
+const boot = window.kdsModule || {};
+const routes = window.kdsRoutes || {};
+const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
 
 /**
  * Alpine root for the Kitchen Display System.
@@ -14,8 +19,8 @@ export default function kdsApp() {
         /* ---------------------------------------------------------------
            Reference data
            --------------------------------------------------------------- */
-        venue: VENUE,
-        operator: OPERATOR,
+        venue: boot.venue || VENUE,
+        operator: boot.operator || OPERATOR,
         stations: STATIONS,
         config: CONFIG,
         cancelReasons: CANCEL_REASONS,
@@ -30,7 +35,7 @@ export default function kdsApp() {
         /* ---------------------------------------------------------------
            Mutable dummy state
            --------------------------------------------------------------- */
-        tickets: TICKETS.map((t) => ({ ...t, items: t.items.map((i) => ({ ...i, modifiers: [...i.modifiers] })) })),
+        tickets: (boot.tickets || TICKETS).map((t) => ({ ...t, items: t.items.map((i) => ({ ...i, modifiers: [...(i.modifiers || [])] })) })),
         history: [],
         now: 0,
         clock: '',
@@ -57,6 +62,7 @@ export default function kdsApp() {
         printerReady: true,
         notifications: [],
         toast: null,
+        saving: false,
 
         stack: [],
         activeKot: null,
@@ -70,7 +76,7 @@ export default function kdsApp() {
         init() {
             const base = Date.now();
             this.tickets.forEach((t) => {
-                t.placedAt = base - (t.placedMinutesAgo || 0) * 60000;
+                t.placedAt = t.placedAt || base - (t.placedMinutesAgo || 0) * 60000;
                 t.acceptedAt = t.acceptedMinutesAgo != null ? base - t.acceptedMinutesAgo * 60000 : null;
                 t.startedAt = t.startedMinutesAgo != null ? base - t.startedMinutesAgo * 60000 : null;
                 t.readyAt = t.readyMinutesAgo != null ? base - t.readyMinutesAgo * 60000 : null;
@@ -79,11 +85,7 @@ export default function kdsApp() {
             });
             this.tick();
             setInterval(() => this.tick(), 15000);
-            // backend: this is where the realtime channel would push in a live ticket
-            setTimeout(() => {
-                const t = this.tickets.find((x) => x.kot === 1058);
-                if (t) this.pushAlert(t);
-            }, 1200);
+            this._unsubscribeRealtime = subscribeRealtime(['kitchen', 'orders', 'pos'], () => this.refreshKds());
         },
         tick() {
             this.now = Date.now();
@@ -122,6 +124,55 @@ export default function kdsApp() {
             this.toast = { message, tone };
             clearTimeout(this._toastTimer);
             this._toastTimer = setTimeout(() => (this.toast = null), 2600);
+        },
+        applyPayload(data) {
+            if (!data) return;
+            if (data.venue) this.venue = data.venue;
+            if (data.operator) this.operator = data.operator;
+            if (data.tickets) {
+                const existing = new Set(this.tickets.map((t) => `${t.orderId}-${t.kot}`));
+                this.tickets = data.tickets.map((t) => ({ ...t, items: t.items.map((i) => ({ ...i, modifiers: [...(i.modifiers || [])] })) }));
+                this.tickets
+                    .filter((t) => !existing.has(`${t.orderId}-${t.kot}`))
+                    .forEach((t) => this.pushAlert(t));
+            }
+        },
+        async refreshKds() {
+            if (!routes.data || this.saving) return null;
+            try {
+                const response = await fetch(routes.data, { headers: { Accept: 'application/json' } });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) return null;
+                this.applyPayload(data);
+                return data;
+            } catch (error) {
+                return null;
+            }
+        },
+        async request(url, payload) {
+            if (!url || this.saving) return null;
+            this.saving = true;
+            try {
+                const response = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf(),
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const first = data.errors ? Object.values(data.errors).flat()[0] : null;
+                    this.notify(first || data.message || 'Kitchen update failed', 'warn');
+                    return null;
+                }
+                this.applyPayload(data);
+                return data;
+            } finally {
+                this.saving = false;
+            }
         },
 
         /* ---------------------------------------------------------------
@@ -276,26 +327,21 @@ export default function kdsApp() {
         /* ---------------------------------------------------------------
            Ticket lifecycle
            --------------------------------------------------------------- */
-        acceptTicket(t) {
-            t.status = 'accepted';
-            t.acceptedAt = this.now;
-            this.notify(`KOT #${t.kot} accepted`);
+        async acceptTicket(t) {
+            const data = await this.request(routes.orders + '/' + t.orderId + '/status', { status: 'accepted' });
+            if (data) this.notify('KOT #' + t.kot + ' accepted');
         },
-        startPreparing(t) {
-            t.status = 'preparing';
-            t.startedAt = this.now;
-            this.notify(`KOT #${t.kot} — preparation started`);
+        async startPreparing(t) {
+            const data = await this.request(routes.orders + '/' + t.orderId + '/status', { status: 'preparing' });
+            if (data) this.notify('KOT #' + t.kot + ' - preparation started');
         },
-        markItemReady(t, i) {
-            i.status = 'ready';
-            i.readyAt = this.now;
-            this.maybePromoteReady(t);
+        async markItemReady(t, i) {
+            const data = await this.request(routes.items + '/' + (i.id || i.uid) + '/status', { status: 'ready' });
+            if (data) this.notify(i.name + ' ready', 'success');
         },
-        markAllReady(t) {
-            t.items.forEach((i) => {
-                if (i.status === 'pending' && i.fire !== 'hold') { i.status = 'ready'; i.readyAt = this.now; }
-            });
-            this.maybePromoteReady(t);
+        async markAllReady(t) {
+            const data = await this.request(routes.orders + '/' + t.orderId + '/status', { status: 'ready' });
+            if (data) this.notify('KOT #' + t.kot + ' ready', 'success');
         },
         /** A ticket becomes READY once every non-cancelled, non-held, available item is ready. */
         maybePromoteReady(t) {
@@ -310,13 +356,12 @@ export default function kdsApp() {
             t.waiterNotified = true;
             this.notify(`${t.waiter || 'Front of house'} notified — ${this.orderLabel(t)} ready`);
         },
-        markPickedUp(t) {
-            t.pickedUpAt = this.now;
-            t.status = 'picked_up';
-            this.history.unshift(t);
-            this.tickets = this.tickets.filter((x) => x.kot !== t.kot);
+        async markPickedUp(t) {
+            const data = await this.request(routes.orders + '/' + t.orderId + '/status', { status: 'served' });
+            if (!data) return;
+            this.history.unshift({ ...t, status: 'picked_up', pickedUpAt: this.now });
             if (this.activeKot === t.kot) { this.activeKot = null; this.closeAll(); }
-            this.notify(`KOT #${t.kot} picked up`);
+            this.notify('KOT #' + t.kot + ' picked up');
         },
         prepMinutes(t) {
             return t.startedAt && t.readyAt ? Math.max(0, Math.round((t.readyAt - t.startedAt) / 60000)) : null;
@@ -476,3 +521,4 @@ export default function kdsApp() {
         },
     };
 }
+

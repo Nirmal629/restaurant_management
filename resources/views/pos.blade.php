@@ -5,8 +5,20 @@
     {{-- POS terminals are fixed-viewport appliances: no user zoom, no rubber-banding. --}}
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>POS · Royal Bengal Restaurant</title>
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/js/pos.js'])
+    <script>
+        window.posModule = @json($posPayload);
+        window.posRoutes = {
+            data: @json(route('pos.data')),
+            kot: @json(route('pos.kot')),
+            itemCancel: @json(url('/pos/items')),
+            billOrder: @json(url('/pos/orders')),
+            billing: @json(route('billing')),
+        };
+        window.realtimeStreamUrl = @json(route('realtime.stream'));
+    </script>
 </head>
 
 {{--
