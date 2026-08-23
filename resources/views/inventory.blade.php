@@ -50,6 +50,9 @@
             <div class="contents">
                 <div class="pos-dock flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-2">
                     <span class="text-[10.5px] font-black uppercase tracking-wide text-slate-500">Recipes</span>
+                    <button type="button" @click="openRecipeForm()" class="flex h-7 items-center gap-1 rounded-md bg-slate-900 px-2 text-[11px] font-bold text-white hover:bg-slate-800">
+                        <x-pos.icon name="plus" class="h-3.5 w-3.5" stroke="2.4" /> New Recipe
+                    </button>
                     <template x-for="name in Object.keys(recipes)" :key="name">
                         <button type="button" @click="openRecipe(name)" class="flex h-7 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-bold text-slate-700 hover:border-slate-900">
                             <x-pos.icon name="clipboard" class="h-3.5 w-3.5" /> <span x-text="name"></span>

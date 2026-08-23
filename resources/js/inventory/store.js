@@ -16,6 +16,7 @@ export default function inventoryApp() {
         txTypes: boot.txTypes || TX_TYPES,
         wastageReasons: boot.wastageReasons || WASTAGE_REASONS,
         recipes: boot.recipes || RECIPES,
+        menuItems: boot.menuItems || [],
         money,
         routes,
 
@@ -268,9 +269,17 @@ export default function inventoryApp() {
             this.open('recipe');
         },
         openRecipeForm(itemName = this.activeRecipeItem) {
-            const item = (boot.menuItems || []).find((m) => m.name === itemName);
-            this.recipeDraft = { itemName, itemId: item?.id, lines: (this.recipes[itemName]?.lines || []).map((l) => ({ ...l })) };
+            const item = itemName ? this.menuItems.find((m) => m.name === itemName) : this.menuItems.find((m) => !this.recipes[m.name]) || this.menuItems[0];
+            const name = item?.name || itemName || '';
+            this.recipeDraft = { itemName: name, itemId: item?.id || null, lines: (this.recipes[name]?.lines || []).map((l) => ({ ...l })) };
+            if (!this.recipeDraft.lines.length) this.addRecipeLine();
             this.open('recipeForm');
+        },
+        selectRecipeItem() {
+            const item = this.menuItems.find((m) => Number(m.id) === Number(this.recipeDraft.itemId));
+            this.recipeDraft.itemName = item?.name || '';
+            this.recipeDraft.lines = (this.recipes[this.recipeDraft.itemName]?.lines || []).map((l) => ({ ...l }));
+            if (!this.recipeDraft.lines.length) this.addRecipeLine();
         },
         addRecipeLine() {
             this.recipeDraft.lines.push({ ingredient: this.ingredients[0]?.name || '', qty: '', unit: this.ingredients[0]?.unit || this.units[0] || 'KG' });

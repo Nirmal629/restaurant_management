@@ -135,7 +135,12 @@
 <div x-show="showRecipeForm" x-cloak>
 <x-pos.dialog name="recipeForm" width="max-w-lg" title="Edit Recipe / BOM">
     <div class="space-y-3 p-4">
-        <p class="text-[13px] font-black text-slate-900" x-text="recipeDraft.itemName"></p>
+        <div>
+            <label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Menu Item</label>
+            <select x-model="recipeDraft.itemId" @change="selectRecipeItem()" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none">
+                <template x-for="item in menuItems" :key="item.id"><option :value="item.id" x-text="item.name"></option></template>
+            </select>
+        </div>
         <div class="space-y-1.5">
             <template x-for="(l, idx) in recipeDraft.lines" :key="idx">
                 <div class="flex items-center gap-1.5">
