@@ -23,6 +23,7 @@ export default function expensesApp() {
         statusFilter: 'all',
         openRowMenu: null,
         activeId: null,
+        expenseModal: null,
         draft: {},
         rejectDraft: { id: null, reason: '' },
         saving: false,
@@ -37,6 +38,16 @@ export default function expensesApp() {
                 rejected: 'border-rose-300 bg-rose-50 text-rose-700',
                 paid: 'border-emerald-400 bg-emerald-50 text-emerald-800',
             }[s] || 'border-slate-300 bg-slate-100 text-slate-600';
+        },
+        openExpenseModal(name) {
+            this.expenseModal = name;
+            this.stack = [name];
+            this.$nextTick(() => this.focusFirst());
+        },
+        closeAll() {
+            this.expenseModal = null;
+            this.stack = [];
+            this.openRowMenu = null;
         },
 
         expense(id) {
@@ -83,19 +94,19 @@ export default function expensesApp() {
         openDetail(e) {
             this.openRowMenu = null;
             this.activeId = e.id;
-            this.openOnly('detail');
+            this.openExpenseModal('detail');
         },
         openCreate() {
             this.openRowMenu = null;
             this.activeId = null;
             this.draft = { id: null, dbId: null, date: new Date().toLocaleDateString('en-GB'), category: this.categories[0] || '', amount: '', method: this.methods[0] || 'Cash', vendor: '', description: '', reference: '', notes: '', receipt: false };
-            this.openOnly('form');
+            this.openExpenseModal('form');
         },
         openEdit(e) {
             this.openRowMenu = null;
             this.activeId = e.id;
             this.draft = { ...e };
-            this.openOnly('form');
+            this.openExpenseModal('form');
         },
         get needsApproval() {
             return Number(this.draft.amount) > this.threshold;
@@ -127,7 +138,7 @@ export default function expensesApp() {
             this.openRowMenu = null;
             this.activeId = e.id;
             this.rejectDraft = { id: e.id, dbId: e.dbId, reason: '' };
-            this.openOnly('reject');
+            this.openExpenseModal('reject');
         },
         async confirmReject() {
             if (!this.rejectDraft.reason?.trim()) return;

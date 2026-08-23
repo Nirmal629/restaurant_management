@@ -1,5 +1,6 @@
 {{-- Expense Detail Drawer --}}
-<x-pos.dialog name="detail" x-show="overlay === 'detail'" variant="drawer" width="max-w-md" title="Expense Detail" :subtitle="null">
+<template x-if="expenseModal === 'detail'">
+<x-pos.dialog name="detail" variant="drawer" width="max-w-md" title="Expense Detail" :subtitle="null" close="all">
     <template x-if="activeExpense">
         <div>
             <div class="border-b border-slate-200 bg-white px-4 py-3">
@@ -38,10 +39,12 @@
         </template>
     </x-slot:footer>
 </x-pos.dialog>
+</template>
 
 
 {{-- Create / Edit Expense --}}
-<x-pos.dialog name="form" x-show="overlay === 'form'" width="max-w-lg" title="Record Expense">
+<template x-if="expenseModal === 'form'">
+<x-pos.dialog name="form" width="max-w-lg" title="Record Expense" close="all">
     <div class="grid grid-cols-2 gap-3 p-4">
         <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Date</label><input x-model="draft.date" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" placeholder="DD/MM/YYYY" /></div>
         <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Category</label><select x-model="draft.category" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none"><template x-for="c in categories" :key="c"><option x-text="c"></option></template></select></div>
@@ -59,25 +62,28 @@
     </div>
     <x-slot:footer>
         <div class="flex gap-2">
-            <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
+            <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
             <button type="button" @click="saveExpense()" :disabled="saving || !draft.category || !Number(draft.amount) || !draft.description?.trim()" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-text="draft.id ? 'Save Changes' : 'Record Expense'"></span>
             </button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</template>
 
 
 {{-- Reject --}}
-<x-pos.dialog name="reject" x-show="overlay === 'reject'" width="max-w-sm" title="Reject Expense">
+<template x-if="expenseModal === 'reject'">
+<x-pos.dialog name="reject" width="max-w-sm" title="Reject Expense" close="all">
     <div class="space-y-3 p-4">
         <p class="text-[13px] font-semibold text-slate-700">Reject <span class="pos-num font-bold text-slate-900" x-text="rejectDraft.id"></span>?</p>
         <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Reason</label><textarea x-model="rejectDraft.reason" data-autofocus rows="2" class="w-full resize-none rounded-md border border-slate-300 bg-white px-2.5 py-2 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none"></textarea></div>
     </div>
     <x-slot:footer>
         <div class="flex gap-2">
-            <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
+            <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
             <button type="button" @click="confirmReject()" :disabled="saving || !rejectDraft.reason?.trim()" class="h-10 flex-1 rounded-md bg-rose-600 text-[12px] font-black uppercase tracking-wide text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-slate-300">Reject</button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</template>
