@@ -97,7 +97,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveReservation()" :disabled="saving || !createDraft.customer?.trim() || (createDraft.phone || '').trim().length < 10" :aria-busy="saving ? 'true' : 'false'"
+            <button type="button" @click="saveReservation()" :disabled="saving || !canSaveDraft()" :aria-busy="saving ? 'true' : 'false'"
                     class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-text="createDraft.id ? 'Save Changes' : 'Create Reservation'"></span>
             </button>
@@ -139,7 +139,7 @@
 {{-- Seat / Change Table --}}
 <x-pos.dialog name="seat" width="max-w-md" title="Seat Customer">
     <div class="p-4">
-        <p class="mb-2 text-[11.5px] font-semibold text-slate-500">Assign a table for <span class="font-bold text-slate-900" x-text="reservation(seatDraft.id)?.customer"></span>:</p>
+        <p class="mb-2 text-[11.5px] font-semibold text-slate-500">Assign a table for <span class="font-bold text-slate-900" x-text="reservationCustomer(seatDraft.id)"></span>:</p>
         <div class="grid gap-1.5" style="grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));">
             <template x-for="t in tables" :key="t.id">
                 <button type="button" @click="seatDraft.table = t.id"
@@ -163,7 +163,7 @@
 {{-- Cancel Reservation --}}
 <x-pos.dialog name="cancel" width="max-w-sm" title="Cancel Reservation">
     <div class="space-y-3 p-4">
-        <p class="text-[13px] font-semibold text-slate-700">Cancel reservation for <span class="font-bold text-slate-900" x-text="reservation(cancelDraft.id)?.customer"></span>?</p>
+        <p class="text-[13px] font-semibold text-slate-700">Cancel reservation for <span class="font-bold text-slate-900" x-text="reservationCustomer(cancelDraft.id)"></span>?</p>
         <div>
             <p class="mb-1.5 text-[10.5px] font-black uppercase tracking-[0.09em] text-slate-600">Reason <span class="text-rose-600">*</span></p>
             <div class="flex flex-wrap gap-1.5">

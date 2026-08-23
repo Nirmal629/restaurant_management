@@ -137,6 +137,25 @@ class PosController extends Controller
         ]);
     }
 
+    public function itemStatus(Request $request, OrderItem $item, RealtimeNotifier $realtime): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', 'string', 'in:served'],
+        ]);
+
+        if ($item->status !== 'ready') {
+            return response()->json(['message' => 'Only ready kitchen items can be marked served from POS.'], 422);
+        }
+
+        $item->update(['status' => $data['status']]);
+        $realtime->touch(['pos', 'orders', 'kitchen', 'tables', 'billing']);
+
+        return response()->json([
+            ...$this->payload($item->order->fresh($this->orderRelations())),
+            'message' => 'Item marked served',
+        ]);
+    }
+
     public function sendToBilling(Order $order, RealtimeNotifier $realtime): JsonResponse
     {
         $order = $order->load($this->orderRelations());
@@ -188,6 +207,7 @@ class PosController extends Controller
             ])->all(),
             'activeOrder' => $activeOrder ? $this->orderResource($activeOrder) : null,
             'runningOrders' => Order::with($this->orderRelations())->whereIn('status', ['open', 'billing'])->latest('id')->limit(20)->get()->map(fn ($o) => $this->orderResource($o))->all(),
+            'readyAlerts' => $activeOrder ? $this->readyAlerts($activeOrder) : [],
         ];
     }
 
@@ -277,6 +297,22 @@ class PosController extends Controller
             'status' => $possible <= 0 ? 'out' : ($possible <= 5 ? 'low' : 'in'),
             'left' => $possible === PHP_INT_MAX ? null : (int) $possible,
         ];
+    }
+
+    private function readyAlerts(Order $order): array
+    {
+        return $order->items
+            ->where('status', 'ready')
+            ->map(fn (OrderItem $item) => [
+                'id' => 'item-' . $item->id,
+                'itemId' => $item->id,
+                'table' => $order->table?->name ?? $order->token ?? 'Takeaway',
+                'item' => $item->menuItem?->name ?? 'Item',
+                'qty' => (int) $item->qty,
+                'station' => $item->station?->name ?? $item->menuItem?->station?->name ?? 'Kitchen',
+            ])
+            ->values()
+            ->all();
     }
 
     private function tableId(?string $name): ?int

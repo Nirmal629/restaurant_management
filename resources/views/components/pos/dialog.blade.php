@@ -17,17 +17,18 @@
         ? 'bg-slate-900 text-white border-slate-800'
         : 'bg-slate-50 text-slate-900 border-slate-200';
     $closeAction = $close === 'all' ? 'closeAll()' : 'back()';
+    $isOpenExpression = "(typeof overlay !== 'undefined' && overlay === '{$name}') || (typeof stack !== 'undefined' && stack.includes('{$name}'))";
 @endphp
 
 <div
-    x-show="overlay === '{{ $name }}'"
+    x-show="{{ $isOpenExpression }}"
     x-cloak
     style="z-index: 60"
     class="fixed inset-0 flex {{ $drawer ? 'justify-end' : 'items-center justify-center p-4' }}"
     role="dialog"
     aria-modal="true"
 >
-    <div class="absolute inset-0 bg-slate-950/45" @click="overlay === '{{ $name }}' && {{ $closeAction }}"></div>
+    <div class="absolute inset-0 bg-slate-950/45" @click="({{ $isOpenExpression }}) && {{ $closeAction }}"></div>
 
     <div class="relative flex min-h-0 flex-col border-slate-300 bg-white shadow-2xl {{ $shell }}">
         <header class="flex shrink-0 items-center gap-3 border-b px-4 py-2.5 {{ $headTone }}">

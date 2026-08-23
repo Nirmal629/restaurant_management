@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pos/data', [PosController::class, 'data'])->middleware('permission:POS,View')->name('pos.data');
     Route::post('/pos/kot', [PosController::class, 'sendKot'])->middleware('permission:POS,Create')->name('pos.kot');
     Route::post('/pos/orders/{order}/billing', [PosController::class, 'sendToBilling'])->middleware('permission:POS,Edit')->name('pos.orders.billing');
+    Route::patch('/pos/items/{item}/status', [PosController::class, 'itemStatus'])->middleware('permission:POS,Edit')->name('pos.items.status');
     Route::patch('/pos/items/{item}/cancel', [PosController::class, 'cancelItem'])->middleware('permission:POS,Cancel')->name('pos.items.cancel');
     Route::get('/orders', [OrderController::class, 'index'])->middleware('permission:Orders,View')->name('orders');
     Route::get('/orders/data', [OrderController::class, 'data'])->middleware('permission:Orders,View')->name('orders.data');

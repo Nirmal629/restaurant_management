@@ -48,6 +48,7 @@ export default function tablesApp(posUrl) {
         editLayout: false,
         dragId: null,
         stack: [],
+        overlay: null,
         toast: null,
         saving: false,
 
@@ -96,24 +97,25 @@ export default function tablesApp(posUrl) {
            Overlay stack (same shape as the POS terminal, so <x-pos.dialog>
            and other shared atoms work unmodified against this store too)
            --------------------------------------------------------------- */
-        get overlay() {
-            return this.stack.length ? this.stack[this.stack.length - 1] : null;
-        },
         open(name) {
             if (this.overlay === name) return;
             this.stack.push(name);
+            this.overlay = name;
             this.$nextTick(() => this.focusFirst());
         },
         swap(name) {
             if (this.stack.length) this.stack[this.stack.length - 1] = name;
             else this.stack.push(name);
+            this.overlay = name;
             this.$nextTick(() => this.focusFirst());
         },
         back() {
             this.stack.pop();
+            this.overlay = this.stack.length ? this.stack[this.stack.length - 1] : null;
         },
         closeAll() {
             this.stack = [];
+            this.overlay = null;
         },
         focusFirst() {
             const root = this.$refs.overlayRoot;

@@ -80,6 +80,7 @@ export default function billingApp(posUrl, tablesUrl) {
            --------------------------------------------------------------- */
         tab: 'summary', // summary | payment — the <1280px tab switcher
         stack: [],
+        overlay: null,
         toast: null,
         moreOpen: false,
         queueMode: 'active',
@@ -132,25 +133,26 @@ export default function billingApp(posUrl, tablesUrl) {
            stack modals, but this screen should never keep older billing
            drawers/modals visible behind the current one.
            --------------------------------------------------------------- */
-        get overlay() {
-            return this.stack.length ? this.stack[this.stack.length - 1] : null;
-        },
         open(name) {
             this.moreOpen = false;
             if (this.overlay === name) return;
             this.stack = [name];
+            this.overlay = name;
             this.$nextTick(() => this.focusFirst());
         },
         swap(name) {
             this.moreOpen = false;
             this.stack = [name];
+            this.overlay = name;
             this.$nextTick(() => this.focusFirst());
         },
         back() {
             this.stack = [];
+            this.overlay = null;
         },
         closeAll() {
             this.stack = [];
+            this.overlay = null;
         },
         focusFirst() {
             const root = this.$refs.overlayRoot;

@@ -14,6 +14,7 @@
             data: @json(route('pos.data')),
             kot: @json(route('pos.kot')),
             itemCancel: @json(url('/pos/items')),
+            itemStatus: @json(url('/pos/items/__ITEM__/status')),
             billOrder: @json(url('/pos/orders')),
             billing: @json(route('billing')),
         };

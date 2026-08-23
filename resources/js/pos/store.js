@@ -11,7 +11,6 @@ import {
     MODIFIER_GROUPS,
     OPERATOR,
     PAYMENT_METHODS,
-    READY_ALERTS,
     RECENT_IDS,
     RUNNING_ORDERS,
     SEED_CART,
@@ -103,6 +102,7 @@ export default function posApp() {
         clock: '',
         duration: 18,
         stack: [], // overlay stack; last entry is the visible dialog
+        overlay: null,
         moreOpen: false,
         alerts: [],
         toast: null,
@@ -139,7 +139,7 @@ export default function posApp() {
                 this.orderType = boot.activeOrder.type || this.orderType;
             }
             this.order.openedAt = Date.now() - 18 * 60000;
-            this.alerts = READY_ALERTS.map((a) => ({ ...a }));
+            this.syncReadyAlerts(boot.readyAlerts);
             this.tick();
             setInterval(() => this.tick(), 20000);
             this._unsubscribeRealtime = subscribeRealtime(['pos', 'orders', 'tables', 'reservations', 'inventory', 'menu'], () => this.refreshFromServer());
@@ -170,9 +170,6 @@ export default function posApp() {
         /* ---------------------------------------------------------------
            Overlay stack — one dialog visible at a time, Esc pops one level
            --------------------------------------------------------------- */
-        get overlay() {
-            return this.stack.length ? this.stack[this.stack.length - 1] : null;
-        },
         isOpen(name) {
             return this.overlay === name;
         },
@@ -183,19 +180,23 @@ export default function posApp() {
             this.moreOpen = false;
             if (this.overlay === name) return;
             this.stack.push(name);
+            this.overlay = name;
             this.$nextTick(() => this.focusFirst());
         },
         /** Replace the top dialog, keeping the level below reachable via back(). */
         swap(name) {
             if (this.stack.length) this.stack[this.stack.length - 1] = name;
             else this.stack.push(name);
+            this.overlay = name;
             this.$nextTick(() => this.focusFirst());
         },
         back() {
             this.stack.pop();
+            this.overlay = this.stack.length ? this.stack[this.stack.length - 1] : null;
         },
         closeAll() {
             this.stack = [];
+            this.overlay = null;
         },
         focusFirst() {
             const root = this.$refs.overlayRoot;
@@ -217,6 +218,7 @@ export default function posApp() {
             if (data.menu) this.menu = data.menu;
             if (data.customers) this.customers = data.customers;
             if (data.runningOrders) this.runningOrders = data.runningOrders;
+            if (data.readyAlerts) this.syncReadyAlerts(data.readyAlerts);
             if (data.activeOrder) {
                 this.order.id = data.activeOrder.id;
                 this.order.code = data.activeOrder.code;
@@ -227,6 +229,7 @@ export default function posApp() {
                 this.order.token = data.activeOrder.token || this.order.token;
                 this.orderType = data.activeOrder.type || this.orderType;
                 this.cart = (data.activeOrder.items || []).map((l) => ({ ...l }));
+                if (!data.readyAlerts) this.syncReadyAlerts();
             }
         },
         async api(url, options = {}) {
@@ -880,10 +883,28 @@ export default function posApp() {
         dismissAlert(id) {
             this.alerts = this.alerts.filter((a) => a.id !== id);
         },
-        markServed(alert) {
-            this.cart.filter((c) => c.status === 'ready' && c.name.startsWith(alert.item.slice(0, 12))).forEach((c) => (c.status = 'served'));
-            this.kitchen.ready = Math.max(0, this.kitchen.ready - 1);
+        syncReadyAlerts(alerts = null) {
+            this.alerts = (alerts || this.cart
+                .filter((c) => c.status === 'ready')
+                .map((c) => ({
+                    id: 'item-' + (c.id || c.uid),
+                    itemId: c.id || c.uid,
+                    table: this.order.table || this.order.token || 'Takeaway',
+                    item: c.name,
+                    qty: c.qty,
+                    station: c.station || 'Kitchen',
+                }))).map((a) => ({ ...a }));
+            this.kitchen.ready = this.alerts.length;
+        },
+        async markServed(alert) {
+            if (!alert?.itemId) return;
+            const data = await this.api(routes.itemStatus.replace('__ITEM__', alert.itemId), {
+                method: 'PATCH',
+                body: JSON.stringify({ status: 'served' }),
+            });
+            if (!data) return;
             this.dismissAlert(alert.id);
+            this.notify(`${alert.item} served`, 'success');
         },
 
         /* ---------------------------------------------------------------

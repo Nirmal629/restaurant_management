@@ -40,7 +40,21 @@ export default function reservationsApp() {
 
         openRowMenu: null,
         activeId: null,
-        createDraft: {},
+        createDraft: {
+            id: null,
+            customer: '',
+            phone: '',
+            email: '',
+            date: new Date().toISOString().slice(0, 10),
+            time: '19:00',
+            guests: 2,
+            floor: 'ground',
+            table: null,
+            occasion: 'None',
+            request: '',
+            source: 'Phone',
+            notes: '',
+        },
         cancelDraft: { id: null, reason: '' },
         seatDraft: { id: null, table: null },
         findDraft: { guests: 2, date: '', time: '', floor: 'all' },
@@ -123,6 +137,18 @@ export default function reservationsApp() {
             const period = h >= 12 ? 'PM' : 'AM';
             const h12 = h % 12 === 0 ? 12 : h % 12;
             return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+        },
+        cellDay(cell) {
+            return cell ? cell.day : '';
+        },
+        cellCount(cell) {
+            return cell ? cell.count : '';
+        },
+        reservationCustomer(id) {
+            return this.reservation(id)?.customer || '';
+        },
+        canSaveDraft() {
+            return !!String(this.createDraft.customer || '').trim() && String(this.createDraft.phone || '').trim().length >= 10;
         },
 
         /* ---------------------------------------------------------------

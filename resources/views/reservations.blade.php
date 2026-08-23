@@ -82,8 +82,8 @@
                                 <button type="button" @click="cell && selectDay(cell.iso)" :disabled="!cell"
                                         :class="cell ? (cell.iso === todayIso ? 'border-slate-900 bg-white' : 'border-slate-200 bg-white hover:border-slate-400') : 'border-transparent'"
                                         class="flex h-16 flex-col items-start justify-between rounded-md border p-1.5 text-left">
-                                    <span x-show="cell" class="pos-num text-[11px] font-bold text-slate-600" x-text="cell?.day"></span>
-                                    <span x-show="cell && cell.count" class="pos-num self-end rounded bg-slate-900 px-1 text-[9px] font-bold text-white" x-text="cell?.count"></span>
+                                    <span x-show="cell" class="pos-num text-[11px] font-bold text-slate-600" x-text="cellDay(cell)"></span>
+                                    <span x-show="cell && cell.count" class="pos-num self-end rounded bg-slate-900 px-1 text-[9px] font-bold text-white" x-text="cellCount(cell)"></span>
                                 </button>
                             </template>
                         </div>
