@@ -1,4 +1,6 @@
 {{-- PO Detail --}}
+<div x-show="tab === 'po'" x-cloak>
+<template x-if="purchaseModal === 'poDetail'">
 <x-pos.dialog name="poDetail" variant="drawer" width="max-w-lg" title="Purchase Order" :subtitle="null" close="all">
     <template x-if="activeOrder">
         <div>
@@ -36,17 +38,19 @@
                 <button type="button" x-show="activeOrder.status === 'draft'" @click="requestApproval(activeOrder)" class="col-span-2 h-9 rounded-md bg-slate-900 text-[11.5px] font-bold uppercase tracking-wide text-white hover:bg-slate-800">Submit for Approval</button>
                 <button type="button" x-show="activeOrder.status === 'approval_pending'" @click="openApprove(activeOrder)" class="col-span-2 h-9 rounded-md bg-sky-600 text-[11.5px] font-bold uppercase tracking-wide text-white hover:bg-sky-500">Approve</button>
                 <button type="button" x-show="activeOrder.status === 'approved'" @click="markOrdered(activeOrder)" class="col-span-2 h-9 rounded-md bg-violet-600 text-[11.5px] font-bold uppercase tracking-wide text-white hover:bg-violet-500">Mark Ordered</button>
-                <button type="button" x-show="['ordered','partially_received'].includes(activeOrder.status)" @click="openReceiveGoods(activeOrder)" class="col-span-2 h-9 rounded-md bg-emerald-600 text-[11.5px] font-bold uppercase tracking-wide text-white hover:bg-emerald-500">Receive Goods</button>
+                <button type="button" x-show="!['received','cancelled'].includes(activeOrder.status)" @click="openEditPO(activeOrder)" class="col-span-2 h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Edit Order</button>
                 <button type="button" x-show="!['received','cancelled'].includes(activeOrder.status)" @click="cancelPO(activeOrder)" class="col-span-2 h-9 rounded-md border border-rose-300 bg-white text-[11.5px] font-bold text-rose-600 hover:bg-rose-50">Cancel Order</button>
                 <button type="button" @click="deletePO(activeOrder)" class="col-span-2 h-9 rounded-md border border-rose-300 bg-white text-[11.5px] font-bold text-rose-600 hover:bg-rose-50">Delete Order</button>
             </div>
         </template>
     </x-slot:footer>
 </x-pos.dialog>
+</template>
 
 
 {{-- Create PO --}}
-<x-pos.dialog name="poForm" width="max-w-2xl" title="New Purchase Order" close="all">
+<template x-if="purchaseModal === 'poForm'">
+<x-pos.dialog name="poForm" width="max-w-2xl" title="Purchase Order" close="all">
     <div class="space-y-3 p-4">
         <div class="grid grid-cols-2 gap-3">
             <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Supplier</label><select x-model="poDraft.supplier" class="h-10 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none"><template x-for="s in suppliers" :key="s.id"><option :value="s.name" x-text="s.name"></option></template></select></div>
@@ -84,13 +88,15 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="closeAll()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="savePO()" :disabled="saving" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Save Draft</button>
+            <button type="button" @click="savePO()" :disabled="saving" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300" x-text="poFormMode === 'edit' ? 'Save Changes' : 'Save Draft'"></button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</template>
 
 
 {{-- Approve --}}
+<template x-if="purchaseModal === 'approve'">
 <x-pos.dialog name="approve" width="max-w-sm" title="Approve Purchase Order" tone="dark" close="all">
     <template x-if="activeOrder">
         <div class="space-y-3 p-4">
@@ -105,13 +111,17 @@
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</template>
+</div>
 
 
 {{-- Receive goods --}}
+<div x-show="tab === 'grn'" x-cloak>
+<template x-if="purchaseModal === 'grnForm'">
 <x-pos.dialog name="grnForm" width="max-w-2xl" title="Goods Receipt" close="all">
     <div class="space-y-3 p-4">
         <div class="grid grid-cols-3 gap-3">
-            <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5"><p class="text-[9.5px] font-black uppercase text-slate-400">PO Reference</p><p class="pos-num text-[12.5px] font-bold text-slate-900" x-text="grnDraft.poRef"></p></div>
+            <div><label class="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">PO Reference</label><select x-model="grnDraft.poRef" @change="selectGrnOrder()" class="pos-num h-9 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[11.5px] font-medium focus:border-slate-900 focus:outline-none"><template x-for="o in receivableOrders" :key="o.id"><option :value="o.id" x-text="o.id"></option></template></select></div>
             <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5"><p class="text-[9.5px] font-black uppercase text-slate-400">Supplier</p><p class="text-[12.5px] font-bold text-slate-900" x-text="grnDraft.supplier"></p></div>
             <div><label class="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Invoice Number</label><input x-model="grnDraft.invoiceNumber" data-autofocus class="h-9 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[11.5px] font-medium focus:border-slate-900 focus:outline-none" /></div>
         </div>
@@ -140,9 +150,11 @@
         </div>
     </x-slot:footer>
 </x-pos.dialog>
+</template>
 
 
 {{-- GRN detail --}}
+<template x-if="purchaseModal === 'grnDetail'">
 <x-pos.dialog name="grnDetail" width="max-w-lg" title="Goods Receipt Detail" :subtitle="null" close="all">
     <template x-if="activeGrn">
         <div class="p-4">
@@ -166,9 +178,13 @@
         </template>
     </x-slot:footer>
 </x-pos.dialog>
+</template>
+</div>
 
 
 {{-- Supplier detail --}}
+<div x-show="tab === 'suppliers'" x-cloak>
+<template x-if="purchaseModal === 'supplierDetail'">
 <x-pos.dialog name="supplierDetail" variant="drawer" width="max-w-md" title="Supplier" :subtitle="null" close="all">
     <template x-if="activeSupplier">
         <div>
@@ -197,3 +213,5 @@
         </div>
     </template>
 </x-pos.dialog>
+</template>
+</div>

@@ -67,6 +67,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchases', [PurchaseController::class, 'index'])->name('purchases');
     Route::get('/purchases/data', [PurchaseController::class, 'data'])->name('purchases.data');
     Route::post('/purchases/orders', [PurchaseController::class, 'storeOrder'])->name('purchases.orders.store');
+    Route::put('/purchases/orders/{order}', [PurchaseController::class, 'updateOrder'])->name('purchases.orders.update');
     Route::patch('/purchases/orders/{order}/status', [PurchaseController::class, 'status'])->name('purchases.orders.status');
     Route::delete('/purchases/orders/{order}', [PurchaseController::class, 'destroyOrder'])->name('purchases.orders.destroy');
     Route::post('/purchases/receipts', [PurchaseController::class, 'storeReceipt'])->name('purchases.receipts.store');

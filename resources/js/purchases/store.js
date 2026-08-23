@@ -22,8 +22,10 @@ export default function purchasesApp() {
         statusFilter: 'all',
         openRowMenu: null,
         activeId: null,
+        purchaseModal: null,
         approvalDraft: {},
         poDraft: {},
+        poFormMode: 'create',
         grnDraft: {},
         saving: false,
 
@@ -53,6 +55,33 @@ export default function purchasesApp() {
                 received: 'border-emerald-400 bg-emerald-50 text-emerald-800',
                 cancelled: 'border-rose-300 bg-rose-50 text-rose-700',
             }[s] || 'border-slate-300 bg-slate-100 text-slate-600';
+        },
+        setTab(tab) {
+            if (this.tab === tab) return;
+            this.tab = tab;
+            this.closeAll();
+            this.openRowMenu = null;
+            this.activeId = null;
+            this.page = 1;
+        },
+        openPurchaseModal(name) {
+            this.purchaseModal = name;
+            this.stack = [name];
+            this.$nextTick(() => this.focusFirst());
+        },
+        closeAll() {
+            this.purchaseModal = null;
+            this.stack = [];
+            this.openRowMenu = null;
+        },
+        canOpen(names) {
+            const allowed = {
+                po: ['poDetail', 'poForm', 'approve'],
+                grn: ['grnForm', 'grnDetail'],
+                suppliers: ['supplierDetail'],
+            }[this.tab] || [];
+            const list = Array.isArray(names) ? names : [names];
+            return list.every((name) => allowed.includes(name));
         },
 
         lineAmount(l) {
@@ -103,15 +132,26 @@ export default function purchasesApp() {
         },
 
         openDetail(o) {
+            if (!this.canOpen('poDetail')) return;
             this.openRowMenu = null;
             this.activeId = o.id;
-            this.openOnly('poDetail');
+            this.openPurchaseModal('poDetail');
         },
         openCreatePO() {
+            if (!this.canOpen('poForm')) return;
             this.openRowMenu = null;
             this.activeId = null;
+            this.poFormMode = 'create';
             this.poDraft = { supplier: this.suppliers[0]?.name || '', expectedDelivery: '', reference: '', notes: '', items: [{ ingredient: '', currentStock: 0, qty: '', unit: 'KG', rate: '', tax: 0 }], discount: 0, otherCharges: 0 };
-            this.openOnly('poForm');
+            this.openPurchaseModal('poForm');
+        },
+        openEditPO(o) {
+            if (!this.canOpen('poForm') || ['received', 'cancelled'].includes(o.status)) return;
+            this.openRowMenu = null;
+            this.activeId = o.id;
+            this.poFormMode = 'edit';
+            this.poDraft = { ...o, items: (o.items || []).map((l) => ({ ...l })) };
+            this.openPurchaseModal('poForm');
         },
         addPoLine() {
             this.poDraft.items.push({ ingredient: '', currentStock: 0, qty: '', unit: 'KG', rate: '', tax: 0 });
@@ -133,7 +173,7 @@ export default function purchasesApp() {
             if (!d.supplier || !d.items.length || d.items.some((l) => !l.ingredient || !Number(l.qty))) return;
             this.saving = true;
             try {
-                const response = await this.request(this.routes.orders, 'POST', d);
+                const response = await this.request(d.dbId ? `${this.routes.orders}/${d.dbId}` : this.routes.orders, d.dbId ? 'PUT' : 'POST', d);
                 this.upsertOrder(response.order);
                 this.closeAll();
                 this.notify(response.message || 'Purchase order saved', 'success');
@@ -148,10 +188,11 @@ export default function purchasesApp() {
             return this.changeOrderStatus(o, 'approval_pending');
         },
         openApprove(o) {
+            if (!this.canOpen('approve')) return;
             this.openRowMenu = null;
             this.activeId = o.id;
             this.approvalDraft = { reason: '' };
-            this.openOnly('approve');
+            this.openPurchaseModal('approve');
         },
         confirmApprove() {
             const o = this.activeOrder;
@@ -192,10 +233,29 @@ export default function purchasesApp() {
         },
 
         openReceiveGoods(o) {
+            if (!this.canOpen('grnForm')) return;
             this.openRowMenu = null;
             this.activeId = o.id;
             this.grnDraft = { poRef: o.id, supplier: o.supplier, invoiceNumber: '', receivedDate: new Date().toISOString().slice(0, 10), items: (o.items || []).map((l) => ({ ingredient: l.ingredient, ordered: l.qty, prevReceived: l.prevReceived || 0, receivedNow: Math.max(0, Number(l.qty || 0) - Number(l.prevReceived || 0)), rejected: 0 })) };
-            this.openOnly('grnForm');
+            this.openPurchaseModal('grnForm');
+        },
+        get receivableOrders() {
+            return this.orders.filter((o) => ['ordered', 'partially_received'].includes(o.status));
+        },
+        openCreateGRN() {
+            if (!this.canOpen('grnForm')) return;
+            const order = this.receivableOrders[0];
+            if (!order) {
+                this.notify('No ordered purchase order is ready to receive', 'warn');
+                return;
+            }
+            this.openReceiveGoods(order);
+        },
+        selectGrnOrder() {
+            const order = this.orders.find((o) => o.id === this.grnDraft.poRef);
+            if (!order) return;
+            this.activeId = order.id;
+            this.grnDraft = { ...this.grnDraft, poRef: order.id, supplier: order.supplier, items: (order.items || []).map((l) => ({ ingredient: l.ingredient, ordered: l.qty, prevReceived: l.prevReceived || 0, receivedNow: Math.max(0, Number(l.qty || 0) - Number(l.prevReceived || 0)), rejected: 0 })) };
         },
         acceptedQty(l) {
             return Math.max(0, Number(l.receivedNow || 0) - Number(l.rejected || 0));
@@ -217,9 +277,10 @@ export default function purchasesApp() {
             }
         },
         openGrnDetail(g) {
+            if (!this.canOpen('grnDetail')) return;
             this.openRowMenu = null;
             this.activeId = g.id;
-            this.openOnly('grnDetail');
+            this.openPurchaseModal('grnDetail');
         },
         get activeGrn() {
             return this.receipts.find((g) => g.id === this.activeId);
@@ -244,9 +305,10 @@ export default function purchasesApp() {
             return this.supplier(this.activeId);
         },
         openSupplierDetail(s) {
+            if (!this.canOpen('supplierDetail')) return;
             this.openRowMenu = null;
             this.activeId = s.id;
-            this.openOnly('supplierDetail');
+            this.openPurchaseModal('supplierDetail');
         },
         supplierHistory(name) {
             return this.orders.filter((o) => o.supplier === name);

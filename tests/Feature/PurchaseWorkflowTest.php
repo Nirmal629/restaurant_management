@@ -63,6 +63,24 @@ class PurchaseWorkflowTest extends TestCase
 
         $order = PurchaseOrder::where('code', $create->json('order.id'))->firstOrFail();
 
+        $this->putJson("/purchases/orders/{$order->id}", [
+            'supplier' => $supplier->name,
+            'expectedDelivery' => now()->addDays(2)->toDateString(),
+            'reference' => 'REF-2',
+            'notes' => 'Updated weekly rice order',
+            'items' => [[
+                'ingredient' => $ingredient->name,
+                'qty' => 18,
+                'unit' => 'KG',
+                'rate' => 71,
+                'tax' => 5,
+            ]],
+            'discount' => 0,
+            'otherCharges' => 20,
+        ])->assertOk()
+            ->assertJsonPath('order.reference', 'REF-2')
+            ->assertJsonPath('order.items.0.qty', 18);
+
         $this->patchJson("/purchases/orders/{$order->id}/status", ['status' => 'approved'])
             ->assertOk()
             ->assertJsonPath('order.status', 'approved');
@@ -77,9 +95,9 @@ class PurchaseWorkflowTest extends TestCase
             'receivedDate' => now()->toDateString(),
             'items' => [[
                 'ingredient' => $ingredient->name,
-                'ordered' => 15,
+                'ordered' => 18,
                 'prevReceived' => 0,
-                'receivedNow' => 15,
+                'receivedNow' => 18,
                 'rejected' => 2,
             ]],
         ]);
@@ -87,11 +105,11 @@ class PurchaseWorkflowTest extends TestCase
         $receipt->assertCreated()
             ->assertJsonPath('orders.0.status', 'received');
 
-        $this->assertDatabaseHas('ingredients', ['id' => $ingredient->id, 'current_stock' => 23]);
+        $this->assertDatabaseHas('ingredients', ['id' => $ingredient->id, 'current_stock' => 26]);
         $this->assertDatabaseHas('stock_ledger_entries', [
             'ingredient_id' => $ingredient->id,
             'type' => 'PURCHASE',
-            'change_qty' => 13,
+            'change_qty' => 16,
         ]);
     }
 

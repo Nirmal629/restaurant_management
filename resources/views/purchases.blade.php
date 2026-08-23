@@ -26,6 +26,7 @@
                 <button type="button" @click="printPurchases()" class="grid h-8 w-8 place-items-center rounded-md border border-slate-300 bg-white text-slate-600 hover:border-slate-900" title="Print"><x-pos.icon name="printer" class="h-3.5 w-3.5" /></button>
                 <a :href="routes.export" class="grid h-8 w-8 place-items-center rounded-md border border-slate-300 bg-white text-slate-600 hover:border-slate-900" title="Export CSV"><x-pos.icon name="download" class="h-3.5 w-3.5" /></a>
                 <template x-if="tab === 'po'"><button type="button" @click="openCreatePO()" class="flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-slate-800"><x-pos.icon name="plus" class="h-3.5 w-3.5" stroke="2.4" /> New Purchase Order</button></template>
+                <template x-if="tab === 'grn'"><button type="button" @click="openCreateGRN()" class="flex h-8 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-[11.5px] font-black uppercase tracking-wide text-white hover:bg-emerald-500"><x-pos.icon name="plus" class="h-3.5 w-3.5" stroke="2.4" /> New Goods Receipt</button></template>
             </div>
         </x-admin.page-header>
 
@@ -36,7 +37,11 @@
             <div class="flex h-8 items-center gap-1.5 rounded-md px-2"><span class="text-[10.5px] font-bold uppercase tracking-wide text-slate-500">Supplier Outstanding</span><span class="pos-num text-[13px] font-black text-slate-900" x-text="money(summary.outstanding)"></span></div>
         </div>
 
-        <x-admin.tabs :tabs="['po' => 'Purchase Orders', 'grn' => 'Goods Receipts', 'suppliers' => 'Suppliers']" active="tab" />
+        <div class="pos-dock adm-tabs border-b border-slate-200 bg-white px-4 py-2">
+            <button type="button" @click="setTab('po')" :class="tab === 'po' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-slate-500'" class="shrink-0 rounded-md border px-3 py-1.5 text-[11.5px] font-bold uppercase tracking-wide">Purchase Orders</button>
+            <button type="button" @click="setTab('grn')" :class="tab === 'grn' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-slate-500'" class="shrink-0 rounded-md border px-3 py-1.5 text-[11.5px] font-bold uppercase tracking-wide">Goods Receipts</button>
+            <button type="button" @click="setTab('suppliers')" :class="tab === 'suppliers' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-slate-500'" class="shrink-0 rounded-md border px-3 py-1.5 text-[11.5px] font-bold uppercase tracking-wide">Suppliers</button>
+        </div>
 
         {{-- PURCHASE ORDERS --}}
         <template x-if="tab === 'po'">
@@ -66,10 +71,10 @@
                                     <td @click.stop>
                                         <x-admin.action-menu id-expr="o.id">
                                             <button type="button" @click="openDetail(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">View Detail</button>
+                                            <button type="button" x-show="!['received','cancelled'].includes(o.status)" @click="openEditPO(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Edit</button>
                                             <button type="button" x-show="o.status === 'draft'" @click="requestApproval(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Submit for Approval</button>
                                             <button type="button" x-show="o.status === 'approval_pending'" @click="openApprove(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Approve</button>
                                             <button type="button" x-show="o.status === 'approved'" @click="markOrdered(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Mark Ordered</button>
-                                            <button type="button" x-show="['ordered','partially_received'].includes(o.status)" @click="openReceiveGoods(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Receive Goods</button>
                                             <button type="button" x-show="!['received','cancelled'].includes(o.status)" @click="cancelPO(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-rose-600 hover:bg-rose-50">Cancel</button>
                                             <button type="button" @click="deletePO(o)" class="flex w-full items-center px-3 py-2 text-left text-[12px] font-semibold text-rose-600 hover:bg-rose-50">Delete</button>
                                         </x-admin.action-menu>

@@ -61,6 +61,42 @@ class PurchaseController extends Controller
         return response()->json(['order' => $this->orderResource($order->fresh(['supplier', 'lines.ingredient', 'creator', 'approver'])), 'message' => "{$order->code} saved"], 201);
     }
 
+    public function updateOrder(Request $request, PurchaseOrder $order): JsonResponse
+    {
+        if (in_array($order->status, ['received', 'cancelled'], true)) {
+            return response()->json(['message' => 'Received or cancelled purchase orders cannot be edited.'], 422);
+        }
+
+        $data = $this->validatedOrder($request);
+
+        DB::transaction(function () use ($data, $order) {
+            $supplier = Supplier::firstOrCreate(['name' => $data['supplier']], ['status' => 'active']);
+            $order->update([
+                'supplier_id' => $supplier->id,
+                'expected_delivery' => $data['expectedDelivery'] ?? null,
+                'reference' => $data['reference'] ?? null,
+                'notes' => $data['notes'] ?? null,
+                'discount' => $data['discount'] ?? 0,
+                'other_charges' => $data['otherCharges'] ?? 0,
+            ]);
+            $order->lines()->delete();
+
+            foreach ($data['items'] as $line) {
+                $ingredient = Ingredient::where('name', $line['ingredient'])->firstOrFail();
+                $order->lines()->create([
+                    'ingredient_id' => $ingredient->id,
+                    'current_stock_snapshot' => $ingredient->current_stock,
+                    'qty' => $line['qty'],
+                    'unit' => $line['unit'] ?? $ingredient->unit,
+                    'rate' => $line['rate'] ?? 0,
+                    'tax_pct' => $line['tax'] ?? 0,
+                ]);
+            }
+        });
+
+        return response()->json(['order' => $this->orderResource($order->fresh(['supplier', 'lines.ingredient', 'creator', 'approver'])), 'message' => "{$order->code} updated"]);
+    }
+
     public function status(Request $request, PurchaseOrder $order): JsonResponse
     {
         $data = $request->validate(['status' => ['required', Rule::in(['approval_pending', 'approved', 'ordered', 'cancelled'])]]);
