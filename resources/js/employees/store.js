@@ -23,8 +23,12 @@ export default function employeesApp() {
         openRowMenu: null,
         activeId: null,
         activeTab: 'profile',
+        showProfile: false,
+        showForm: false,
         draft: {},
         saving: false,
+        suppressProfileUntil: 0,
+        profileOpenArmed: false,
 
         statusLabel(s) {
             return { active: 'Active', inactive: 'Inactive', suspended: 'Suspended' }[s] || s;
@@ -35,20 +39,39 @@ export default function employeesApp() {
         init() {
             this.sortEmployees();
         },
+        open(name) {
+            if (name === 'form') this.stack = this.stack.filter((item) => item !== 'profile');
+            if (name === 'profile') this.stack = this.stack.filter((item) => item !== 'form');
+            this.stack = this.stack.filter((item) => item !== name);
+            this.stack.push(name);
+            this.$nextTick(() => this.focusFirst());
+        },
+        swap(name) {
+            if (this.stack.length) this.stack.pop();
+            this.open(name);
+        },
         back() {
-            this.stack.pop();
+            const current = this.overlay;
+            this.stack = current ? this.stack.filter((item) => item !== current) : [];
             this.cleanupOverlayState();
         },
         closeAll() {
             this.stack = [];
             this.cleanupOverlayState();
         },
+        closeEmployeeModal() {
+            this.closeAll();
+        },
         cleanupOverlayState() {
             if (!this.stack.includes('profile')) {
+                this.showProfile = false;
                 this.activeId = null;
                 this.activeTab = 'profile';
             }
-            if (!this.stack.includes('form')) this.draft = {};
+            if (!this.stack.includes('form')) {
+                this.showForm = false;
+                this.draft = {};
+            }
             this.openRowMenu = null;
         },
 
@@ -86,25 +109,43 @@ export default function employeesApp() {
             };
         },
 
+        armProfileOpen() {
+            if (!this.overlay && Date.now() >= this.suppressProfileUntil) this.profileOpenArmed = true;
+        },
         openProfile(e) {
+            if (!this.profileOpenArmed || this.overlay || Date.now() < this.suppressProfileUntil) {
+                this.profileOpenArmed = false;
+                return;
+            }
+            this.profileOpenArmed = false;
             this.openRowMenu = null;
             this.stack = [];
+            this.showForm = false;
             this.activeId = e.id;
             this.activeTab = 'profile';
-            this.open('profile');
+            this.showProfile = true;
+            this.stack = ['profile'];
         },
         openCreate() {
-            this.stack = [];
+            this.stack = ['form'];
             this.openRowMenu = null;
             this.activeId = null;
             this.activeTab = 'profile';
+            this.showProfile = false;
+            this.showForm = true;
+            this.profileOpenArmed = false;
+            this.suppressProfileUntil = Date.now() + 500;
             this.draft = { id: null, name: '', phone: '', email: '', address: '', role: this.roles[0] || 'Staff', shift: 'fullday', joiningDate: new Date().toISOString().slice(0, 10) };
-            this.open('form');
+            this.$nextTick(() => this.focusFirst());
         },
         openEdit(e) {
             this.openRowMenu = null;
             this.draft = { id: e.id, name: e.name, phone: e.phone, email: e.email, address: e.address, role: e.role, shift: e.shift, joiningDate: e.joiningDate };
-            this.swap('form');
+            this.stack = ['form'];
+            this.showProfile = false;
+            this.showForm = true;
+            this.profileOpenArmed = false;
+            this.$nextTick(() => this.focusFirst());
         },
         async saveEmployee() {
             const d = this.draft;
@@ -132,6 +173,12 @@ export default function employeesApp() {
             this.clearFilters();
 
             this.notify(result.message || `${d.name} saved`, 'success');
+            this.activeId = null;
+            this.showProfile = false;
+            this.showForm = false;
+            this.profileOpenArmed = false;
+            this.suppressProfileUntil = Date.now() + 800;
+            this.stack = [];
             this.closeAll();
         },
         async setStatus(e, status) {

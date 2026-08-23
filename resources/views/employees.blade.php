@@ -43,7 +43,7 @@
                 <thead><tr><th>Employee</th><th>Employee ID</th><th>Role</th><th>Phone</th><th>Shift</th><th>Active Tables</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                     <template x-for="e in paged" :key="e.id">
-                        <tr class="adm-row-clickable" @click="openProfile(e)">
+                        <tr class="adm-row-clickable" @pointerdown="armProfileOpen()" @click="openProfile(e)">
                             <td><div class="flex items-center gap-2"><x-admin.avatar initials-expr="initials(e.name)" size="sm" /><span class="font-bold text-slate-900" x-text="e.name"></span></div></td>
                             <td class="pos-num text-slate-500" x-text="e.employeeId"></td>
                             <td class="text-slate-600" x-text="e.role"></td>
