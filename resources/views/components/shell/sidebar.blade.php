@@ -62,13 +62,23 @@
         @endforeach
     </nav>
 
+    @php
+        $employee = auth()->user()?->employee;
+        $initials = $employee ? collect(explode(' ', $employee->name))->map(fn ($w) => strtoupper($w[0]))->take(2)->implode('') : 'U';
+    @endphp
     <div class="shrink-0 border-t border-slate-800 p-3">
         <div class="flex items-center gap-2.5 rounded-lg bg-slate-800/70 p-2 max-[1279px]:justify-center">
-            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-white">AR</span>
-            <span class="min-w-0 leading-tight max-[1279px]:hidden">
-                <span class="block truncate text-[12px] font-semibold text-white">Aisha Rahman</span>
-                <span class="block truncate text-[10px] text-slate-400">Owner</span>
+            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-white">{{ $initials }}</span>
+            <span class="min-w-0 flex-1 leading-tight max-[1279px]:hidden">
+                <span class="block truncate text-[12px] font-semibold text-white">{{ $employee->name ?? auth()->user()?->name }}</span>
+                <span class="block truncate text-[10px] text-slate-400">{{ $employee?->role?->name ?? 'Staff' }}</span>
             </span>
+            <form method="POST" action="{{ route('logout') }}" class="max-[1279px]:hidden">
+                @csrf
+                <button type="submit" class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-slate-700 hover:text-white" title="Log out">
+                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M15 8l4 4-4 4M19 12H9"/></svg>
+                </button>
+            </form>
         </div>
     </div>
 </aside>

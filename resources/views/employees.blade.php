@@ -3,8 +3,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Employees · Royal Bengal Restaurant</title>
     @vite(['resources/css/app.css', 'resources/css/pos.css', 'resources/css/admin.css', 'resources/js/employees.js'])
+    <script>
+        window.employeeModule = @json($employeeModule);
+        window.employeeRoutes = {
+            data: @json(route('employees.data')),
+            store: @json(route('employees.store')),
+            update: @json(url('/employees')),
+        };
+    </script>
 </head>
 <body x-data="employeesApp" x-cloak class="adm-root adm-shell bg-slate-100 text-slate-900 antialiased">
 

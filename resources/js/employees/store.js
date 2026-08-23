@@ -1,31 +1,55 @@
-import { overlayMixin, paginationMixin, initials } from '../shared/kit.js';
+import { overlayMixin, paginationMixin, initials, formatDate } from '../shared/kit.js';
 import { ACTIONS, EMPLOYEES, MODULES, ROLES, ROLE_DEFAULTS, SHIFT_TYPES, VENUE } from './demo-data.js';
 
 export default function employeesApp() {
+    const boot = window.employeeModule || {};
+    const routes = window.employeeRoutes || {};
+
     return {
         ...overlayMixin(),
         ...paginationMixin(10),
-        venue: VENUE,
-        roles: ROLES,
-        modules: MODULES,
-        actions: ACTIONS,
-        roleDefaults: ROLE_DEFAULTS,
-        shiftTypes: SHIFT_TYPES,
+        venue: boot.venue || VENUE,
+        roles: boot.roles || ROLES,
+        modules: boot.modules || MODULES,
+        actions: boot.actions || ACTIONS,
+        roleDefaults: boot.roleDefaults || ROLE_DEFAULTS,
+        shiftTypes: boot.shiftTypes || SHIFT_TYPES,
         initials,
+        formatDate,
 
-        employees: EMPLOYEES.map((e) => ({ ...e, permissionOverrides: { ...e.permissionOverrides }, activity: [...(e.activity || [])] })),
+        employees: (boot.employees || EMPLOYEES).map((e) => ({ ...e, permissionOverrides: { ...(e.permissionOverrides || {}) }, activity: [...(e.activity || [])] })),
         query: '',
         roleFilter: 'all',
         openRowMenu: null,
         activeId: null,
         activeTab: 'profile',
         draft: {},
+        saving: false,
 
         statusLabel(s) {
             return { active: 'Active', inactive: 'Inactive', suspended: 'Suspended' }[s] || s;
         },
         statusClass(s) {
             return { active: 'border-emerald-400 bg-emerald-50 text-emerald-800', inactive: 'border-slate-300 bg-slate-100 text-slate-500', suspended: 'border-rose-400 bg-rose-100 text-rose-800' }[s] || 'border-slate-300 bg-slate-100 text-slate-600';
+        },
+        init() {
+            this.sortEmployees();
+        },
+        back() {
+            this.stack.pop();
+            this.cleanupOverlayState();
+        },
+        closeAll() {
+            this.stack = [];
+            this.cleanupOverlayState();
+        },
+        cleanupOverlayState() {
+            if (!this.stack.includes('profile')) {
+                this.activeId = null;
+                this.activeTab = 'profile';
+            }
+            if (!this.stack.includes('form')) this.draft = {};
+            this.openRowMenu = null;
         },
 
         employee(id) {
@@ -64,13 +88,17 @@ export default function employeesApp() {
 
         openProfile(e) {
             this.openRowMenu = null;
+            this.stack = [];
             this.activeId = e.id;
             this.activeTab = 'profile';
             this.open('profile');
         },
         openCreate() {
+            this.stack = [];
             this.openRowMenu = null;
-            this.draft = { id: null, name: '', phone: '', email: '', address: '', role: this.roles[3], shift: 'fullday', joiningDate: '2026-08-23' };
+            this.activeId = null;
+            this.activeTab = 'profile';
+            this.draft = { id: null, name: '', phone: '', email: '', address: '', role: this.roles[0] || 'Staff', shift: 'fullday', joiningDate: new Date().toISOString().slice(0, 10) };
             this.open('form');
         },
         openEdit(e) {
@@ -78,23 +106,87 @@ export default function employeesApp() {
             this.draft = { id: e.id, name: e.name, phone: e.phone, email: e.email, address: e.address, role: e.role, shift: e.shift, joiningDate: e.joiningDate };
             this.swap('form');
         },
-        saveEmployee() {
+        async saveEmployee() {
             const d = this.draft;
             if (!d.name.trim() || d.phone.trim().length < 10) return;
-            if (d.id) {
-                Object.assign(this.employee(d.id), d);
-                this.notify(`${d.name} updated`, 'success');
-            } else {
-                this.employees.unshift({ ...d, employeeId: 'EMP-' + String(100 + this.employees.length).padStart(3, '0'), status: 'active', pinSet: false, permissionOverrides: {}, activity: [{ at: 'Just now', text: 'Employee record created' }] });
-                this.notify(`${d.name} added`, 'success');
-            }
+
+            const url = d.id ? `${routes.update}/${d.id}` : routes.store;
+            const method = d.id ? 'PUT' : 'POST';
+            const payload = {
+                name: d.name,
+                phone: d.phone,
+                email: d.email || null,
+                address: d.address || null,
+                role: d.role,
+                shift: d.shift,
+                joiningDate: d.joiningDate || null,
+            };
+
+            const result = await this.request(url, { method, body: JSON.stringify(payload) });
+            if (!result) return;
+
+            if (d.id) this.replaceEmployee(result.employee);
+            else this.employees.unshift(this.normalizeEmployee(result.employee));
+
+            this.sortEmployees();
+            this.clearFilters();
+
+            this.notify(result.message || `${d.name} saved`, 'success');
             this.closeAll();
         },
-        setStatus(e, status) {
+        async setStatus(e, status) {
             this.openRowMenu = null;
-            e.status = status;
-            e.activity.unshift({ at: 'Just now', text: `Account marked ${this.statusLabel(status)}` });
-            this.notify(`${e.name} marked ${this.statusLabel(status)}`, status === 'suspended' ? 'warn' : 'success');
+            const result = await this.request(`${routes.update}/${e.id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+            if (!result) return;
+
+            this.replaceEmployee(result.employee);
+            this.notify(result.message || `${e.name} marked ${this.statusLabel(status)}`, status === 'suspended' ? 'warn' : 'success');
+        },
+
+        normalizeEmployee(employee) {
+            return { ...employee, permissionOverrides: { ...(employee.permissionOverrides || {}) }, activity: [...(employee.activity || [])] };
+        },
+        replaceEmployee(employee) {
+            const next = this.normalizeEmployee(employee);
+            const index = this.employees.findIndex((e) => e.id === next.id);
+            if (index >= 0) this.employees.splice(index, 1, next);
+            else this.employees.unshift(next);
+
+            if (this.activeId === next.id) this.activeId = next.id;
+        },
+        sortEmployees() {
+            const codeNumber = (employee) => Number(String(employee.employeeId || '').replace(/\D/g, '')) || 0;
+            this.employees.sort((a, b) => codeNumber(b) - codeNumber(a) || String(b.employeeId || '').localeCompare(String(a.employeeId || '')));
+        },
+        async request(url, options = {}) {
+            if (!url || this.saving) return null;
+            this.saving = true;
+
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        ...(options.headers || {}),
+                    },
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    const firstError = data.errors ? Object.values(data.errors).flat()[0] : null;
+                    this.notify(firstError || data.message || 'Employee update failed', 'warn');
+                    return null;
+                }
+
+                return data;
+            } catch (error) {
+                this.notify('Network error while saving employee', 'warn');
+                return null;
+            } finally {
+                this.saving = false;
+            }
         },
 
         /* Permissions */
@@ -110,24 +202,41 @@ export default function employeesApp() {
         hasPermission(e, mod, action) {
             return this.effectivePermissions(e)[mod]?.has(action) || false;
         },
-        togglePermission(e, mod, action) {
+        async togglePermission(e, mod, action) {
+            const previous = { ...(e.permissionOverrides || {}) };
             const current = new Set(this.effectivePermissions(e)[mod] || []);
             current.has(action) ? current.delete(action) : current.add(action);
             e.permissionOverrides = { ...e.permissionOverrides, [mod]: [...current] };
+            await this.savePermissions(e, previous);
         },
         isOverridden(e, mod) {
             return !!e.permissionOverrides?.[mod];
         },
-        resetModuleToDefault(e, mod) {
+        async resetModuleToDefault(e, mod) {
+            const previous = { ...(e.permissionOverrides || {}) };
             const o = { ...e.permissionOverrides };
             delete o[mod];
             e.permissionOverrides = o;
+            await this.savePermissions(e, previous);
+        },
+        async savePermissions(e, previous = null) {
+            const result = await this.request(`${routes.update}/${e.id}/permissions`, { method: 'PATCH', body: JSON.stringify({ permissionOverrides: e.permissionOverrides || {} }) });
+            if (!result) {
+                if (previous) e.permissionOverrides = previous;
+                return;
+            }
+
+            this.replaceEmployee(result.employee);
+            this.notify(result.message || 'Permissions updated', 'success');
         },
 
         /* Shifts */
-        setShift(e, key) {
-            e.shift = key;
-            this.notify(`${e.name}'s shift set to ${this.shiftTypes[key].label}`);
+        async setShift(e, key) {
+            const result = await this.request(`${routes.update}/${e.id}/shift`, { method: 'PATCH', body: JSON.stringify({ shift: key }) });
+            if (!result) return;
+
+            this.replaceEmployee(result.employee);
+            this.notify(result.message || `${e.name}'s shift set to ${this.shiftTypes[key].label}`, 'success');
         },
     };
 }

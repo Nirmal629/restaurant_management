@@ -107,19 +107,24 @@
                             <p class="mt-2 text-sm text-slate-500">Access your restaurant dashboard, POS, and kitchen controls.</p>
                         </div>
 
-                        <form class="space-y-5" method="GET" action="{{ route('dashboard') }}">
+                        @if ($errors->any())
+                            <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                                {{ $errors->first() }}
+                            </div>
+                        @endif
+
+                        <form class="space-y-5" method="POST" action="{{ route('login.attempt') }}">
+                            @csrf
                             <div>
                                 <label for="branch" class="mb-2 block text-sm font-medium text-slate-700">Restaurant / Branch</label>
-                                <select id="branch" name="branch" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200">
-                                    <option>Sunset Bistro - Main Branch</option>
-                                    <option>Sunset Bistro - Downtown</option>
-                                    <option>Garden Table - Rooftop</option>
+                                <select id="branch" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" disabled>
+                                    <option>Royal Bengal Restaurant — Ichapur Main Branch</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label for="email" class="mb-2 block text-sm font-medium text-slate-700">Email or Mobile</label>
-                                <input id="email" type="text" value="manager@sunsetbistro.com" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="Enter your email or phone number" />
+                                <label for="email" class="mb-2 block text-sm font-medium text-slate-700">Email</label>
+                                <input id="email" name="email" type="text" value="{{ old('email') }}" required autofocus class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="you@royalbengal.example" />
                             </div>
 
                             <div>
@@ -128,7 +133,7 @@
                                     <a href="{{ route('password.request') }}" class="text-sm font-medium text-brand-600 hover:text-brand-700">Forgot password?</a>
                                 </div>
                                 <div class="relative">
-                                    <input id="password" type="password" value="password123" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 pr-11 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="Enter your password" />
+                                    <input id="password" name="password" type="password" required class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 pr-11 text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200" placeholder="Enter your password" />
                                     <button type="button" class="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700" aria-label="Toggle password visibility">
                                         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                             <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
@@ -140,7 +145,7 @@
 
                             <div class="flex items-center justify-between gap-3">
                                 <label class="inline-flex items-center gap-2 text-sm text-slate-600">
-                                    <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                                    <input type="checkbox" name="remember" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
                                     Remember me
                                 </label>
                                 <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-emerald-700">Secure login</span>
@@ -151,18 +156,23 @@
                             </button>
                         </form>
 
+                        <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                            <p class="font-semibold text-slate-600">Demo accounts (password: <code class="rounded bg-slate-200 px-1 py-0.5">password</code>)</p>
+                            <p class="mt-1">rakesh.singh@royalbengal.example — Restaurant Manager</p>
+                            <p>amit.sharma@royalbengal.example — Cashier</p>
+                            <p>rahul.das@royalbengal.example — Waiter</p>
+                        </div>
+
                         <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
                                     <p class="text-sm font-semibold text-amber-800">Quick Staff PIN</p>
                                     <p class="text-xs text-amber-700">For waiters, cashiers, and kitchen staff</p>
                                 </div>
-                                <button type="button" class="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600">
-                                    Use PIN
-                                </button>
+                                <span class="rounded-lg bg-amber-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-amber-800">Coming soon</span>
                             </div>
                             <div class="mt-3 flex items-center gap-2">
-                                <input type="password" value="1234" class="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200" placeholder="Enter your PIN" />
+                                <input type="password" disabled placeholder="Enter your PIN" class="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-slate-400 outline-none" />
                             </div>
                         </div>
 

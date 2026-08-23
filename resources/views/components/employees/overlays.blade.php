@@ -35,9 +35,9 @@
                     </div>
                 </div>
                 <div class="mt-2 grid grid-cols-3 gap-1.5">
-                    <button type="button" @click="setStatus(activeEmployee, 'active')" class="h-8 rounded-md border border-slate-300 bg-white text-[10.5px] font-bold text-slate-700 hover:border-emerald-500">Active</button>
-                    <button type="button" @click="setStatus(activeEmployee, 'inactive')" class="h-8 rounded-md border border-slate-300 bg-white text-[10.5px] font-bold text-slate-700 hover:border-slate-500">Inactive</button>
-                    <button type="button" @click="setStatus(activeEmployee, 'suspended')" class="h-8 rounded-md border border-rose-300 bg-white text-[10.5px] font-bold text-rose-600 hover:bg-rose-50">Suspend</button>
+                    <button type="button" @click="setStatus(activeEmployee, 'active')" :disabled="saving" class="h-8 rounded-md border border-slate-300 bg-white text-[10.5px] font-bold text-slate-700 hover:border-emerald-500 disabled:cursor-wait disabled:opacity-60">Active</button>
+                    <button type="button" @click="setStatus(activeEmployee, 'inactive')" :disabled="saving" class="h-8 rounded-md border border-slate-300 bg-white text-[10.5px] font-bold text-slate-700 hover:border-slate-500 disabled:cursor-wait disabled:opacity-60">Inactive</button>
+                    <button type="button" @click="setStatus(activeEmployee, 'suspended')" :disabled="saving" class="h-8 rounded-md border border-rose-300 bg-white text-[10.5px] font-bold text-rose-600 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60">Suspend</button>
                 </div>
             </div>
 
@@ -53,15 +53,15 @@
                                     <td class="font-semibold text-slate-800" x-text="m"></td>
                                     <template x-for="a in actions" :key="a">
                                         <td class="text-center">
-                                            <button type="button" @click="togglePermission(activeEmployee, m, a)"
+                                            <button type="button" @click="togglePermission(activeEmployee, m, a)" :disabled="saving"
                                                     :class="hasPermission(activeEmployee, m, a) ? 'bg-slate-900 border-slate-900' : 'bg-white border-slate-300'"
-                                                    class="mx-auto grid h-5 w-5 place-items-center rounded border">
+                                                    class="mx-auto grid h-5 w-5 place-items-center rounded border disabled:cursor-wait disabled:opacity-60">
                                                 <x-pos.icon name="check" class="h-3 w-3 text-white" stroke="3" x-show="hasPermission(activeEmployee, m, a)" />
                                             </button>
                                         </td>
                                     </template>
                                     <td>
-                                        <button type="button" x-show="isOverridden(activeEmployee, m)" @click="resetModuleToDefault(activeEmployee, m)" class="text-[9.5px] font-bold text-amber-600 underline decoration-amber-300 underline-offset-2">Reset</button>
+                                        <button type="button" x-show="isOverridden(activeEmployee, m)" @click="resetModuleToDefault(activeEmployee, m)" :disabled="saving" class="text-[9.5px] font-bold text-amber-600 underline decoration-amber-300 underline-offset-2 disabled:cursor-wait disabled:opacity-60">Reset</button>
                                     </td>
                                 </tr>
                             </template>
@@ -74,7 +74,7 @@
             <div x-show="activeTab === 'shifts'" class="p-3">
                 <div class="grid grid-cols-3 gap-1.5">
                     <template x-for="[key, s] in Object.entries(shiftTypes)" :key="key">
-                        <button type="button" @click="setShift(activeEmployee, key)" :class="activeEmployee.shift === key ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'" class="rounded-md border p-3 text-center">
+                        <button type="button" @click="setShift(activeEmployee, key)" :disabled="saving" :class="activeEmployee.shift === key ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'" class="rounded-md border p-3 text-center disabled:cursor-wait disabled:opacity-60">
                             <span class="block text-[12px] font-bold" x-text="s.label"></span>
                             <span class="pos-num mt-0.5 block text-[10.5px] opacity-75" x-text="s.start + ' – ' + s.end"></span>
                         </button>
@@ -132,7 +132,7 @@
     <x-slot:footer>
         <div class="flex gap-2">
             <button type="button" @click="back()" class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="saveEmployee()" :disabled="!draft.name?.trim() || (draft.phone || '').trim().length < 10" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+            <button type="button" @click="saveEmployee()" :disabled="saving || !draft.name?.trim() || (draft.phone || '').trim().length < 10" class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
                 <span x-text="draft.id ? 'Save Changes' : 'Add Employee'"></span>
             </button>
         </div>
