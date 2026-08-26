@@ -11,7 +11,7 @@ class RoleAndPermissionSeeder extends Seeder
     /** Mirrors resources/js/employees/demo-data.js exactly (MODULES × ACTIONS, ROLE_DEFAULTS). */
     public function run(): void
     {
-        $modules = ['POS', 'Orders', 'Kitchen', 'Billing', 'Customers', 'Menu', 'Inventory', 'Purchases', 'Expenses', 'Reports', 'Employees', 'Settings'];
+        $modules = ['Dashboard', 'POS', 'Orders', 'Kitchen', 'Billing', 'Customers', 'Menu', 'Inventory', 'Purchases', 'Expenses', 'Reports', 'Employees', 'Settings'];
         $actions = ['View', 'Create', 'Edit', 'Cancel', 'Approve', 'Refund', 'Export'];
 
         $permissions = [];
@@ -25,20 +25,20 @@ class RoleAndPermissionSeeder extends Seeder
             'Restaurant Owner' => array_fill_keys($modules, $actions),
             'Restaurant Manager' => array_fill_keys($modules, $actions),
             'Cashier' => [
-                'POS' => ['View', 'Create'], 'Orders' => ['View'],
+                'Dashboard' => ['View'], 'POS' => ['View', 'Create'], 'Orders' => ['View'],
                 'Billing' => ['View', 'Create', 'Cancel'], 'Customers' => ['View', 'Create'], 'Reports' => ['View'],
             ],
             'Waiter' => [
-                'POS' => ['View', 'Create'], 'Orders' => ['View', 'Create'], 'Customers' => ['View', 'Create'],
+                'Dashboard' => ['View'], 'POS' => ['View', 'Create'], 'Orders' => ['View', 'Create'], 'Customers' => ['View', 'Create'],
             ],
             'Kitchen Manager' => [
-                'Kitchen' => ['View', 'Edit', 'Cancel'], 'Orders' => ['View'], 'Inventory' => ['View', 'Edit'],
+                'Dashboard' => ['View'], 'Kitchen' => ['View', 'Edit', 'Cancel'], 'Orders' => ['View'], 'Inventory' => ['View', 'Edit'],
             ],
             'Chef' => [
                 'Kitchen' => ['View', 'Edit'],
             ],
             'Inventory Manager' => [
-                'Inventory' => ['View', 'Create', 'Edit', 'Approve'], 'Purchases' => ['View', 'Create', 'Edit', 'Approve'], 'Reports' => ['View'],
+                'Dashboard' => ['View'], 'Inventory' => ['View', 'Create', 'Edit', 'Approve'], 'Purchases' => ['View', 'Create', 'Edit', 'Approve'], 'Reports' => ['View'],
             ],
         ];
 

@@ -97,6 +97,7 @@ export default function posApp() {
            UI state
            --------------------------------------------------------------- */
         activeCat: 'all',
+        sidebarOpen: true,
         dietFilter: 'all', // all | veg | nonveg | egg
         availableOnly: false,
         query: '',
@@ -105,6 +106,7 @@ export default function posApp() {
         stack: [], // overlay stack; last entry is the visible dialog
         overlay: null,
         moreOpen: false,
+        appMenuOpen: false,
         alerts: [],
         toast: null,
         saving: false,
@@ -181,6 +183,7 @@ export default function posApp() {
             return this.stack.length > 0;
         },
         open(name) {
+            this.appMenuOpen = false;
             this.moreOpen = false;
             if (this.overlay === name) return;
             this.stack.push(name);
@@ -213,6 +216,14 @@ export default function posApp() {
             this.toast = { message, tone };
             clearTimeout(this._toastTimer);
             this._toastTimer = setTimeout(() => (this.toast = null), 2600);
+        },
+        toggleSidebar() {
+            this.appMenuOpen = false;
+            this.sidebarOpen = !this.sidebarOpen;
+        },
+        toggleAppMenu() {
+            this.moreOpen = false;
+            this.appMenuOpen = !this.appMenuOpen;
         },
         applyServerState(data) {
             if (!data) return;

@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\Kot;
 use App\Models\Order;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -125,14 +126,28 @@ class EmployeeController extends Controller
 
     private function payload(): array
     {
+        $this->ensureDashboardPermissions();
+
         $roles = Role::with('permissions')->orderBy('id')->get();
         $employees = Employee::with(['role.permissions', 'branch', 'user'])
             ->latest('id')
             ->get();
 
-        $permissions = $roles->flatMap->permissions
+        $moduleOrder = collect(['Dashboard', 'POS', 'Orders', 'Kitchen', 'Billing', 'Customers', 'Menu', 'Inventory', 'Purchases', 'Expenses', 'Reports', 'Employees', 'Settings'])
+            ->flip();
+        $actionOrder = collect(['View', 'Create', 'Edit', 'Cancel', 'Approve', 'Refund', 'Export'])
+            ->flip();
+
+        $permissions = Permission::query()
+            ->get()
             ->unique(fn ($permission) => $permission->module . ':' . $permission->action)
-            ->sortBy([['module', 'asc'], ['action', 'asc']])
+            ->sortBy(fn ($permission) => sprintf(
+                '%03d-%s-%03d-%s',
+                $moduleOrder[$permission->module] ?? 999,
+                $permission->module,
+                $actionOrder[$permission->action] ?? 999,
+                $permission->action
+            ))
             ->values();
 
         return [
@@ -156,6 +171,34 @@ class EmployeeController extends Controller
             ],
             'employees' => $employees->map(fn ($employee) => $this->employeeResource($employee))->values()->all(),
         ];
+    }
+
+    private function ensureDashboardPermissions(): void
+    {
+        $actions = ['View', 'Create', 'Edit', 'Cancel', 'Approve', 'Refund', 'Export'];
+        $permissions = [];
+
+        foreach ($actions as $action) {
+            $permissions[$action] = Permission::firstOrCreate(['module' => 'Dashboard', 'action' => $action]);
+        }
+
+        $roleDefaults = [
+            'Restaurant Owner' => $actions,
+            'Restaurant Manager' => $actions,
+            'Cashier' => ['View'],
+            'Waiter' => ['View'],
+            'Kitchen Manager' => ['View'],
+            'Inventory Manager' => ['View'],
+        ];
+
+        Role::query()->whereIn('name', array_keys($roleDefaults))->get()->each(function (Role $role) use ($roleDefaults, $permissions) {
+            $ids = collect($roleDefaults[$role->name])
+                ->map(fn ($action) => $permissions[$action]?->id)
+                ->filter()
+                ->all();
+
+            $role->permissions()->syncWithoutDetaching($ids);
+        });
     }
 
     private function employeeResource(Employee $employee): array

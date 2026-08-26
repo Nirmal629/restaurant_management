@@ -1,7 +1,7 @@
 {{-- BillingHeader — ~52px. Identity · invoice/order codes · cashier telemetry + quick actions. --}}
 <header class="pos-header z-30 flex items-center gap-3 border-b border-slate-800 bg-slate-900 px-3 text-slate-100">
 
-    <a href="{{ route('dashboard') }}" class="flex shrink-0 items-center gap-2 rounded px-1 py-1 hover:bg-slate-800">
+    <a href="{{ route('app.start') }}" class="flex shrink-0 items-center gap-2 rounded px-1 py-1 hover:bg-slate-800">
         <span class="grid h-7 w-7 place-items-center rounded bg-brand-600 text-[11px] font-black text-white">RB</span>
         <span class="hidden leading-none sm:block">
             <span class="block text-[13px] font-bold text-white" x-text="venue.name"></span>

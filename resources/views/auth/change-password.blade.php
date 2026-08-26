@@ -137,7 +137,7 @@
                         </form>
 
                         <div class="mt-6 border-t border-slate-200 pt-4 text-center text-sm text-slate-500">
-                            Need to return? <a href="{{ route('dashboard') }}" class="font-medium text-brand-600 hover:text-brand-700">Back to dashboard</a>
+                            Need to return? <a href="{{ route('app.start') }}" class="font-medium text-brand-600 hover:text-brand-700">Back to app</a>
                         </div>
                     </div>
                 </div>

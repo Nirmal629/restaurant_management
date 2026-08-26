@@ -110,7 +110,7 @@
                             </label>
 
                             <div class="flex items-center justify-end gap-2 md:col-span-2">
-                                <a href="{{ route('dashboard') }}" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-[12px] font-black text-slate-700 hover:bg-slate-50">Cancel</a>
+                                <a href="{{ route('app.start') }}" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-[12px] font-black text-slate-700 hover:bg-slate-50">Cancel</a>
                                 <button type="submit" class="rounded-md bg-slate-950 px-4 py-2 text-[12px] font-black text-white hover:bg-slate-800">Update Profile</button>
                             </div>
                         </form>

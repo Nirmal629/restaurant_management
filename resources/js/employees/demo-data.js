@@ -3,18 +3,18 @@ export const VENUE = { name: 'Royal Bengal Restaurant', branch: 'Ichapur Main Br
 export const ROLES = ['Restaurant Owner', 'Restaurant Manager', 'Cashier', 'Waiter', 'Kitchen Manager', 'Chef', 'Inventory Manager'];
 export const SHIFT_TYPES = { morning: { label: 'Morning', start: '09:00', end: '16:00' }, evening: { label: 'Evening', start: '16:00', end: '23:00' }, fullday: { label: 'Full Day', start: '09:00', end: '23:00' } };
 
-export const MODULES = ['POS', 'Orders', 'Kitchen', 'Billing', 'Customers', 'Menu', 'Inventory', 'Purchases', 'Expenses', 'Reports', 'Employees', 'Settings'];
+export const MODULES = ['Dashboard', 'POS', 'Orders', 'Kitchen', 'Billing', 'Customers', 'Menu', 'Inventory', 'Purchases', 'Expenses', 'Reports', 'Employees', 'Settings'];
 export const ACTIONS = ['View', 'Create', 'Edit', 'Cancel', 'Approve', 'Refund', 'Export'];
 
 /** Role → default permission set (module: [actions]). Waiter/Chef etc. get a narrow slice; Owner gets everything. */
 export const ROLE_DEFAULTS = {
     'Restaurant Owner': Object.fromEntries(MODULES.map((m) => [m, [...ACTIONS]])),
     'Restaurant Manager': Object.fromEntries(MODULES.map((m) => [m, ACTIONS.filter((a) => a !== 'Export' || true)])),
-    'Cashier': { POS: ['View', 'Create'], Orders: ['View'], Billing: ['View', 'Create', 'Cancel'], Customers: ['View', 'Create'], Reports: ['View'] },
-    'Waiter': { POS: ['View', 'Create'], Orders: ['View', 'Create'], Customers: ['View', 'Create'] },
-    'Kitchen Manager': { Kitchen: ['View', 'Edit', 'Cancel'], Orders: ['View'], Inventory: ['View', 'Edit'] },
+    'Cashier': { Dashboard: ['View'], POS: ['View', 'Create'], Orders: ['View'], Billing: ['View', 'Create', 'Cancel'], Customers: ['View', 'Create'], Reports: ['View'] },
+    'Waiter': { Dashboard: ['View'], POS: ['View', 'Create'], Orders: ['View', 'Create'], Customers: ['View', 'Create'] },
+    'Kitchen Manager': { Dashboard: ['View'], Kitchen: ['View', 'Edit', 'Cancel'], Orders: ['View'], Inventory: ['View', 'Edit'] },
     'Chef': { Kitchen: ['View', 'Edit'] },
-    'Inventory Manager': { Inventory: ['View', 'Create', 'Edit', 'Approve'], Purchases: ['View', 'Create', 'Edit', 'Approve'], Reports: ['View'] },
+    'Inventory Manager': { Dashboard: ['View'], Inventory: ['View', 'Create', 'Edit', 'Approve'], Purchases: ['View', 'Create', 'Edit', 'Approve'], Reports: ['View'] },
 };
 
 const emp = (o) => ({

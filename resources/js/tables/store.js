@@ -49,6 +49,7 @@ export default function tablesApp(posUrl) {
         dragId: null,
         stack: [],
         overlay: null,
+        appMenuOpen: false,
         toast: null,
         saving: false,
         savingAction: '',
@@ -99,6 +100,7 @@ export default function tablesApp(posUrl) {
            and other shared atoms work unmodified against this store too)
            --------------------------------------------------------------- */
         open(name) {
+            this.appMenuOpen = false;
             if (this.overlay === name) return;
             this.stack.push(name);
             this.overlay = name;
@@ -128,6 +130,9 @@ export default function tablesApp(posUrl) {
             this.toast = { message, tone };
             clearTimeout(this._toastTimer);
             this._toastTimer = setTimeout(() => (this.toast = null), 2600);
+        },
+        toggleAppMenu() {
+            this.appMenuOpen = !this.appMenuOpen;
         },
         applyServerState(data) {
             if (!data) return;

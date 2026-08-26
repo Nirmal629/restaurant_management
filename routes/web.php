@@ -36,11 +36,12 @@ Route::match(['get', 'post'], '/logout', [AuthenticatedSessionController::class,
 Route::middleware('auth')->group(function () {
     Route::get('/realtime/versions', [RealtimeController::class, 'versions'])->name('realtime.versions');
     Route::get('/realtime/stream', [RealtimeController::class, 'stream'])->name('realtime.stream');
+    Route::get('/start', [AuthenticatedSessionController::class, 'start'])->name('app.start');
     Route::get('/change-password', [PasswordController::class, 'edit'])->name('password.change');
     Route::put('/change-password', [PasswordController::class, 'update'])->name('password.update');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::view('/dashboard', 'dashboard')->name('dashboard');
+    Route::view('/dashboard', 'dashboard')->middleware('permission:Dashboard,View')->name('dashboard');
     Route::get('/pos', [PosController::class, 'index'])->middleware('permission:POS,View')->name('pos');
     Route::get('/pos/data', [PosController::class, 'data'])->middleware('permission:POS,View')->name('pos.data');
     Route::post('/pos/kot', [PosController::class, 'sendKot'])->middleware('permission:POS,Create')->name('pos.kot');

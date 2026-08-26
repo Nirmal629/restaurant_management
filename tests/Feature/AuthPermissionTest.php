@@ -45,9 +45,25 @@ class AuthPermissionTest extends TestCase
 
     public function test_dashboard_renders_for_authenticated_employee(): void
     {
-        $this->actingAsEmployeeWithPermissions([['Inventory', 'View']]);
+        $this->actingAsEmployeeWithPermissions([['Dashboard', 'View']]);
 
         $this->get('/dashboard')->assertOk();
+    }
+
+    public function test_dashboard_requires_dashboard_permission(): void
+    {
+        $this->actingAsEmployeeWithPermissions([['Inventory', 'View']]);
+
+        $this->get('/dashboard')->assertForbidden();
+    }
+
+    public function test_dashboard_menu_only_shows_with_dashboard_permission(): void
+    {
+        $this->actingAsEmployeeWithPermissions([['Inventory', 'View']]);
+
+        $this->get('/inventory')
+            ->assertOk()
+            ->assertDontSee('Dashboard');
     }
 
     public function test_employee_creation_creates_login_user_with_default_password(): void
@@ -136,6 +152,13 @@ class AuthPermissionTest extends TestCase
 
         $this->post('/login', ['email' => 'inventory@example.test', 'password' => 'password'])
             ->assertRedirect(route('inventory'));
+    }
+
+    public function test_start_redirects_to_first_permitted_menu_when_dashboard_is_not_allowed(): void
+    {
+        $this->actingAsEmployeeWithPermissions([['POS', 'View']]);
+
+        $this->get('/start')->assertRedirect(route('pos'));
     }
 
     public function test_logout_link_request_logs_out_without_csrf_error(): void

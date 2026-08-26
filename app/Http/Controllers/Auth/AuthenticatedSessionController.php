@@ -58,22 +58,18 @@ class AuthenticatedSessionController extends Controller
         return redirect()->route('login');
     }
 
-    private function firstAllowedRouteFor($user): string
+    public function start(Request $request): RedirectResponse
     {
-        foreach ($this->sidebarRoutePermissions() as $route => $permission) {
-            if (Route::has($route) && $user->hasPermission($permission[0], $permission[1])) {
-                return route($route);
-            }
-        }
-
-        return route('dashboard');
+        return redirect($this->firstAllowedRouteFor($request->user()));
     }
 
-    private function sidebarRoutePermissions(): array
+    public static function allowedRoutePermissions(): array
     {
         return [
+            'dashboard' => ['Dashboard', 'View'],
             'pos' => ['POS', 'View'],
             'tables' => ['Orders', 'View'],
+            'orders' => ['Orders', 'View'],
             'kds' => ['Kitchen', 'View'],
             'reservations' => ['Orders', 'View'],
             'customers' => ['Customers', 'View'],
@@ -86,5 +82,16 @@ class AuthenticatedSessionController extends Controller
             'employees' => ['Employees', 'View'],
             'settings' => ['Settings', 'View'],
         ];
+    }
+
+    private function firstAllowedRouteFor($user): string
+    {
+        foreach (self::allowedRoutePermissions() as $route => $permission) {
+            if (Route::has($route) && $user->hasPermission($permission[0], $permission[1])) {
+                return route($route);
+            }
+        }
+
+        return route('profile.edit');
     }
 }

@@ -2,7 +2,10 @@
     CategorySidebar — 174px labelled list on desktop, 76px icon rail below
     1200px. Scrolls internally; the page never does.
 --}}
-<aside class="pos-rail border-r border-slate-200 bg-white">
+<aside x-show="sidebarOpen"
+       x-transition.opacity.duration.120ms
+       class="pos-rail border-r border-slate-200 bg-white"
+       aria-label="Menu category sidebar">
     <nav class="pos-scroll p-1.5" aria-label="Menu categories">
         <template x-for="(cat, i) in categories" :key="cat.key">
             <div>

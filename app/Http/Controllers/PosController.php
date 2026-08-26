@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\Kot;
+use App\Models\Branch;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
@@ -211,7 +212,7 @@ class PosController extends Controller
         $activeOrder ??= Order::with($this->orderRelations())->whereIn('status', ['open', 'billing'])->latest('id')->first();
 
         return [
-            'venue' => ['name' => config('app.name', 'Restaurant'), 'branch' => 'Main Branch'],
+            'venue' => $this->venue(),
             'operator' => $this->operator(),
             'categories' => $this->categories(),
             'menu' => $this->menu(),
@@ -224,6 +225,19 @@ class PosController extends Controller
             'activeOrder' => $activeOrder ? $this->orderResource($activeOrder) : null,
             'runningOrders' => Order::with($this->orderRelations())->whereIn('status', ['open', 'billing'])->latest('id')->limit(20)->get()->map(fn ($o) => $this->orderResource($o))->all(),
             'readyAlerts' => $activeOrder ? $this->readyAlerts($activeOrder) : [],
+        ];
+    }
+
+    private function venue(): array
+    {
+        $branch = Branch::query()->first();
+        $name = config('app.name', 'Royal Bengal Restaurant');
+
+        return [
+            'name' => $name === 'Laravel' ? 'Royal Bengal Restaurant' : $name,
+            'initials' => 'RB',
+            'branch' => $branch?->name ?? 'Main Branch',
+            'terminal' => 'POS Terminal',
         ];
     }
 
