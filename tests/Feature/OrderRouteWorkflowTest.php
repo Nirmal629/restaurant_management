@@ -53,6 +53,13 @@ class OrderRouteWorkflowTest extends TestCase
             ->assertJsonPath('order.status', 'billing');
 
         $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'billing']);
+
+        $order->update(['status' => 'completed']);
+
+        $this->patchJson("/orders/{$order->id}/status", ['status' => 'billing'])
+            ->assertUnprocessable();
+
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'completed']);
     }
 
     private function createOrderWithItem(string $code, string $status): Order

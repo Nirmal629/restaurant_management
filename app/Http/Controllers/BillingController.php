@@ -350,7 +350,7 @@ class BillingController extends Controller
         }
 
         return $query
-            ->whereIn('status', ['open', 'billing', 'paid'])
+            ->whereIn('status', ['open', 'billing'])
             ->latest('id')
             ->get()
             ->first(fn (Order $order) => $this->canEnterBilling($order));
@@ -488,9 +488,10 @@ class BillingController extends Controller
     private function billingQueue(): array
     {
         return Order::with(['table', 'customer', 'waiter', 'items.menuItem', 'invoice.payments', 'invoice.refunds'])
-            ->whereIn('status', ['open', 'billing', 'paid'])
+            ->whereIn('status', ['open', 'billing'])
             ->latest('id')
             ->get()
+            ->filter(fn (Order $order) => $this->canEnterBilling($order))
             ->map(function (Order $order) {
                 $invoice = $order->invoice;
                 $total = $invoice ? $invoice->grandTotal() : $order->subtotal();

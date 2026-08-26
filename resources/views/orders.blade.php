@@ -39,8 +39,8 @@
         </div>
 
         <div class="pos-workspace">
-            <aside class="w-80 shrink-0 border-r border-slate-200 bg-white">
-                <div class="border-b border-slate-200 p-2">
+            <aside class="flex min-h-0 w-80 shrink-0 flex-col border-r border-slate-200 bg-white">
+                <div class="shrink-0 border-b border-slate-200 p-2">
                     <input x-model="query" placeholder="Search order / table / customer" class="h-9 w-full rounded-md border border-slate-300 px-3 text-[12px] font-semibold focus:border-slate-900 focus:outline-none">
                     <div class="mt-2 grid grid-cols-5 gap-1">
                         <template x-for="[key,label] in [['active','Active'],['kitchen','Kitchen'],['billing','Bill'],['history','History'],['all','All']]" :key="key">
@@ -49,7 +49,7 @@
                     </div>
                 </div>
 
-                <div class="pos-scroll space-y-1.5 p-2">
+                <div class="pos-scroll min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2">
                     <template x-for="order in filteredOrders" :key="order.id">
                         <button type="button" @click="select(order)" :class="activeOrder?.id === order.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800 hover:border-slate-400'" class="w-full rounded-md border p-2 text-left">
                             <div class="flex items-start gap-2">
@@ -77,7 +77,7 @@
                         <p class="text-[11px] font-semibold text-slate-500" x-text="activeOrder.type + ' · ' + activeOrder.table + ' · Waiter ' + activeOrder.waiter"></p>
                     </div>
                     <span :class="statusClass(activeOrder.status)" class="rounded border px-2 py-1 text-[10px] font-black uppercase" x-text="orderStatusLabel(activeOrder.status)"></span>
-                    <a :href="billingUrl(activeOrder)" class="h-9 rounded-md bg-slate-900 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-white">Billing</a>
+                    <a :href="billingUrl(activeOrder)" x-show="canOpenBilling(activeOrder)" class="h-9 rounded-md bg-slate-900 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-white">Billing</a>
                 </div>
 
                 <div class="grid grid-cols-4 gap-2 border-b border-slate-200 bg-slate-50 p-3">
@@ -114,7 +114,7 @@
                 </div>
 
                 <div class="pos-dock flex gap-2 border-t border-slate-200 bg-white px-4 py-2.5">
-                    <button type="button" @click="setOrderStatus(activeOrder, 'billing')" :disabled="activeOrder.kitchenOpen > 0 || activeOrder.status !== 'open'" class="h-9 rounded-md bg-amber-500 px-3 text-[11px] font-black uppercase text-white disabled:opacity-40">Send To Billing</button>
+                    <button type="button" @click="setOrderStatus(activeOrder, 'billing')" :disabled="!canOpenBilling(activeOrder)" class="h-9 rounded-md bg-amber-500 px-3 text-[11px] font-black uppercase text-white disabled:opacity-40">Send To Billing</button>
                     <button type="button" @click="setOrderStatus(activeOrder, 'cancelled')" x-show="!['paid','completed','cancelled'].includes(activeOrder.status)" class="h-9 rounded-md border border-rose-300 px-3 text-[11px] font-bold text-rose-600">Cancel Order</button>
                 </div>
             </main>

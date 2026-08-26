@@ -151,7 +151,12 @@ class BillingWorkflowTest extends TestCase
         $this->getJson('/billing/data?order=' . $second->id)
             ->assertOk()
             ->assertJsonPath('order.code', 'ORD-QUEUE-002')
-            ->assertJsonCount(2, 'orders');
+            ->assertJsonCount(1, 'orders');
+
+        $this->getJson('/billing/data')
+            ->assertOk()
+            ->assertJsonPath('order.code', 'ORD-QUEUE-002')
+            ->assertJsonCount(1, 'orders');
 
         $this->getJson('/billing/data?order=' . $first->id)
             ->assertOk()

@@ -98,6 +98,9 @@ export default function ordersApp() {
         itemStatusLabel(status) {
             return { unsent: 'New', sent: 'Sent', accepted: 'Accepted', preparing: 'Preparing', ready: 'Ready', served: 'Served', cancelled: 'Cancelled', unavailable: 'Unavailable' }[status] || status;
         },
+        canOpenBilling(order) {
+            return order && ['open', 'billing'].includes(order.status) && order.itemCount > 0 && order.kitchenOpen === 0;
+        },
         statusClass(status) {
             return {
                 open: 'border-sky-300 bg-sky-50 text-sky-800',

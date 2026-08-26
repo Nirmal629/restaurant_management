@@ -29,6 +29,10 @@ class OrderController extends Controller
             'status' => ['required', Rule::in(['open', 'billing', 'paid', 'completed', 'cancelled'])],
         ]);
 
+        if (in_array($order->status, ['paid', 'completed', 'cancelled'], true) && $data['status'] !== $order->status) {
+            return response()->json(['message' => 'Completed, paid, or cancelled orders cannot be reopened from Orders.'], 422);
+        }
+
         if ($data['status'] === 'billing' && $order->items()->whereNotIn('status', ['served', 'cancelled'])->exists()) {
             return response()->json(['message' => 'Serve or cancel all kitchen items before moving to billing.'], 422);
         }
