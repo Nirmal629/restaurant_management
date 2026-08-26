@@ -1,29 +1,57 @@
 export function subscribeRealtime(topics, onChange) {
-    if (!topics?.length || typeof EventSource === 'undefined') return null;
+    if (!topics?.length || typeof fetch === 'undefined') return null;
 
-    const endpoint = window.realtimeStreamUrl || '/realtime/stream';
+    const endpoint = window.realtimeVersionsUrl || '/realtime/versions';
     const url = `${endpoint}?topics=${encodeURIComponent(topics.join(','))}`;
-    let source = null;
-    let reconnectTimer = null;
+    let last = null;
+    let timer = null;
+    let controller = null;
+    let stopped = false;
 
-    const connect = () => {
-        source = new EventSource(url);
-        source.addEventListener('modules', (event) => {
-            const data = JSON.parse(event.data || '{}');
-            const changed = Object.keys(data.versions || {});
-            if (changed.some((topic) => topics.includes(topic))) onChange(changed);
-        });
-        source.onerror = () => {
-            source?.close();
-            clearTimeout(reconnectTimer);
-            reconnectTimer = setTimeout(connect, 3000);
-        };
+    const poll = async () => {
+        if (stopped) return;
+        if (document.visibilityState === 'hidden') {
+            schedule(8000);
+            return;
+        }
+
+        controller?.abort();
+        controller = new AbortController();
+
+        try {
+            const response = await fetch(url, {
+                headers: { Accept: 'application/json' },
+                signal: controller.signal,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.versions) {
+                schedule(5000);
+                return;
+            }
+
+            if (last) {
+                const changed = Object.keys(data.versions).filter((topic) => data.versions[topic] !== last[topic]);
+                if (changed.length) onChange(changed);
+            }
+            last = data.versions;
+            schedule(2500);
+        } catch (error) {
+            if (error.name !== 'AbortError') schedule(5000);
+        }
     };
 
-    connect();
+    const schedule = (delay) => {
+        clearTimeout(timer);
+        timer = setTimeout(poll, delay);
+    };
+
+    poll();
+    document.addEventListener('visibilitychange', poll);
 
     return () => {
-        clearTimeout(reconnectTimer);
-        source?.close();
+        stopped = true;
+        clearTimeout(timer);
+        controller?.abort();
+        document.removeEventListener('visibilitychange', poll);
     };
 }

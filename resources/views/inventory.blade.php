@@ -19,6 +19,7 @@
             recipes: @json(url('/inventory/recipes')),
             export: @json(route('inventory.export')),
         };
+        window.realtimeVersionsUrl = @json(route('realtime.versions'));
         window.realtimeStreamUrl = @json(route('realtime.stream'));
     </script>
 </head>

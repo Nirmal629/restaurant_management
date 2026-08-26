@@ -92,7 +92,9 @@ class KdsController extends Controller
                 $placedAt = $first?->sent_at ?? $order->started_at ?? $order->created_at;
 
                 return [
+                    'key' => $order->id . '-' . ($round ?: $order->id),
                     'kot' => $round ?: $order->id,
+                    'round' => (int) $round,
                     'orderId' => $order->id,
                     'orderCode' => $order->code,
                     'orderType' => $order->type,

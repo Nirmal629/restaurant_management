@@ -19,6 +19,7 @@
             invoice: @json(url('/billing/invoices')),
             item: @json(url('/billing/items')),
         };
+        window.realtimeVersionsUrl = @json(route('realtime.versions'));
         window.realtimeStreamUrl = @json(route('realtime.stream'));
     </script>
 </head>

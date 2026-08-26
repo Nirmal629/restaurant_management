@@ -5,7 +5,8 @@
     <div class="border-b border-slate-200 bg-white p-3">
         <div class="relative">
             <x-pos.icon name="search" class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input x-model="customerQuery" data-autofocus inputmode="tel" placeholder="Phone number or name…"
+            <input x-model="customerQuery" data-autofocus inputmode="tel" name="pos_customer_lookup"
+                   autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" placeholder="Phone number or name…"
                    class="h-10 w-full rounded-md border border-slate-300 bg-white pl-8 pr-3 text-[13px] font-medium focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900" />
         </div>
 
@@ -64,9 +65,9 @@
             </button>
 
             <div x-show="customerCreating" x-cloak class="mt-2.5 space-y-2">
-                <input x-model="customerDraft.name" placeholder="Guest name"
+                <input x-model="customerDraft.name" name="guest_name" autocomplete="name" placeholder="Guest name"
                        class="h-9 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" />
-                <input x-model="customerDraft.phone" inputmode="tel" maxlength="10" placeholder="Mobile number"
+                <input x-model="customerDraft.phone" inputmode="tel" name="guest_phone" autocomplete="tel" maxlength="10" placeholder="Mobile number"
                        class="pos-num h-9 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none" />
                 <button type="button" @click="quickAddCustomer()"
                         :disabled="!customerDraft.name.trim() || customerDraft.phone.trim().length < 10"

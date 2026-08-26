@@ -8,13 +8,16 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RealtimeController extends Controller
 {
+    public function versions(Request $request, RealtimeNotifier $realtime)
+    {
+        $topics = $this->topics($request);
+
+        return response()->json(['versions' => $realtime->versions($topics)]);
+    }
+
     public function stream(Request $request, RealtimeNotifier $realtime): StreamedResponse
     {
-        $topics = collect(explode(',', (string) $request->query('topics')))
-            ->map(fn ($topic) => trim($topic))
-            ->filter()
-            ->values()
-            ->all();
+        $topics = $this->topics($request);
 
         return response()->stream(function () use ($realtime, $topics) {
             $last = [];
@@ -47,5 +50,14 @@ class RealtimeController extends Controller
             'Cache-Control' => 'no-cache, no-transform',
             'X-Accel-Buffering' => 'no',
         ]);
+    }
+
+    private function topics(Request $request): array
+    {
+        return collect(explode(',', (string) $request->query('topics')))
+            ->map(fn ($topic) => trim($topic))
+            ->filter()
+            ->values()
+            ->all();
     }
 }

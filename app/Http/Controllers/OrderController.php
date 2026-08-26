@@ -141,7 +141,7 @@ class OrderController extends Controller
             'code' => $order->code,
             'type' => $order->type,
             'status' => $order->status,
-            'table' => $order->table?->name ?? 'Takeaway',
+            'table' => $this->tableLabel($order),
             'customer' => $order->customer?->name ?? 'Walk-in Customer',
             'waiter' => $order->waiter?->name ?? '-',
             'guests' => $order->guests ?? 0,
@@ -168,5 +168,18 @@ class OrderController extends Controller
     private function relations(): array
     {
         return ['table', 'customer', 'waiter', 'items.menuItem.station', 'items.station', 'kots', 'invoice.payments', 'invoice.refunds'];
+    }
+
+    private function tableLabel(Order $order): string
+    {
+        if ($order->type === 'dinein') {
+            return $order->table?->code ?? $order->table?->name ?? 'Dine In (No table)';
+        }
+
+        if ($order->type === 'delivery') {
+            return $order->token ? "Delivery {$order->token}" : 'Delivery';
+        }
+
+        return $order->token ? "Token {$order->token}" : 'Takeaway';
     }
 }

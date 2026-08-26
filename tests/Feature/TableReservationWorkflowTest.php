@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Employee;
 use App\Models\Floor;
 use App\Models\Order;
 use App\Models\Reservation;
@@ -15,10 +16,11 @@ class TableReservationWorkflowTest extends TestCase
 
     public function test_table_operations_are_dynamic_and_connected(): void
     {
-        $this->actingAsEmployeeWithPermissions([
+        [, $employee] = $this->actingAsEmployeeWithPermissions([
             ['Orders', 'View'],
             ['Orders', 'Create'],
             ['Orders', 'Edit'],
+            ['POS', 'View'],
         ]);
 
         $floor = Floor::create(['name' => 'Ground Floor', 'display_order' => 1, 'is_active' => true]);
@@ -75,11 +77,94 @@ class TableReservationWorkflowTest extends TestCase
         $this->patchJson("/tables/{$table->id}/status", ['status' => 'available'])
             ->assertUnprocessable();
 
-        Order::where('table_id', $table->id)->update(['status' => 'completed']);
+        $target = RestaurantTable::create([
+            'floor_id' => $floor->id,
+            'code' => 'T100',
+            'seats' => 4,
+            'shape' => 'square',
+            'status' => 'available',
+        ]);
 
-        $this->patchJson("/tables/{$table->id}/status", ['status' => 'cleaning'])
+        $this->postJson("/tables/{$table->id}/transfer", ['to' => 'T100'])
             ->assertOk()
-            ->assertJsonPath('tables.0.status', 'cleaning');
+            ->assertJsonFragment(['id' => 'T99', 'status' => 'cleaning'])
+            ->assertJsonFragment(['id' => 'T100', 'status' => 'occupied']);
+
+        $this->assertDatabaseHas('orders', [
+            'table_id' => $target->id,
+            'guests' => 3,
+            'status' => 'open',
+        ]);
+        $this->assertDatabaseHas('restaurant_tables', ['id' => $table->id, 'status' => 'cleaning']);
+        $this->assertDatabaseHas('restaurant_tables', ['id' => $target->id, 'status' => 'occupied']);
+
+        $emptyStaleOrder = Order::create([
+            'code' => 'ORD-STALE-EMPTY',
+            'type' => 'dinein',
+            'table_id' => $table->id,
+            'guests' => 1,
+            'status' => 'open',
+            'started_at' => now(),
+        ]);
+
+        $this->patchJson("/tables/{$table->id}/status", ['status' => 'available'])
+            ->assertOk()
+            ->assertJsonFragment(['id' => 'T99', 'status' => 'available']);
+
+        $this->assertDatabaseHas('orders', ['id' => $emptyStaleOrder->id, 'status' => 'cancelled']);
+        $this->assertDatabaseHas('restaurant_tables', ['id' => $table->id, 'status' => 'available']);
+
+        Order::where('table_id', $target->id)->update(['status' => 'completed']);
+
+        $this->patchJson("/tables/{$target->id}/status", ['status' => 'cleaning'])
+            ->assertOk()
+            ->assertJsonFragment(['id' => 'T100', 'status' => 'cleaning']);
+
+        $target->refresh()->update(['status' => 'available']);
+        $order = Order::create([
+            'code' => 'ORD-MERGE-001',
+            'type' => 'dinein',
+            'table_id' => $table->id,
+            'waiter_id' => $employee->id,
+            'guests' => 2,
+            'status' => 'open',
+            'started_at' => now(),
+        ]);
+        $table->update(['status' => 'occupied']);
+
+        $newWaiter = Employee::create([
+            'role_id' => $employee->role_id,
+            'branch_id' => $employee->branch_id,
+            'employee_code' => 'EMP-WAITER',
+            'name' => 'Functional Waiter',
+            'phone' => '9888888888',
+            'status' => 'active',
+        ]);
+
+        $this->patchJson("/tables/{$table->id}/waiter", ['waiter' => 'Functional Waiter'])
+            ->assertOk()
+            ->assertJsonFragment(['id' => 'T99', 'waiter' => 'Functional Waiter']);
+
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'waiter_id' => $newWaiter->id]);
+
+        $this->postJson("/tables/{$table->id}/merge", ['with' => 'T100'])
+            ->assertOk()
+            ->assertJsonPath('merge.primary', 'T99')
+            ->assertJsonPath('merge.secondary', 'T100')
+            ->assertJsonFragment(['id' => 'T99', 'groupPrimary' => true])
+            ->assertJsonFragment(['id' => 'T100', 'status' => 'occupied', 'groupPrimary' => false]);
+
+        $this->assertDatabaseHas('restaurant_tables', ['id' => $table->id, 'is_merge_primary' => true]);
+        $this->assertDatabaseHas('restaurant_tables', ['id' => $target->id, 'merged_with_table_id' => $table->id]);
+        $this->getJson('/tables/data')
+            ->assertOk()
+            ->assertJsonFragment(['id' => 'T99', 'groupPrimary' => true])
+            ->assertJsonFragment(['id' => 'T100', 'mergedWithTableId' => $table->id, 'groupPrimary' => false]);
+
+        $this->getJson('/pos/data?order=' . $order->id)
+            ->assertOk()
+            ->assertJsonPath('activeOrder.table', 'T99 + T100')
+            ->assertJsonPath('activeOrder.floor', 'Ground Floor');
 
         $this->putJson("/tables/{$table->id}", [
             'name' => 'Window Table',
@@ -88,7 +173,7 @@ class TableReservationWorkflowTest extends TestCase
             'shape' => 'round',
             'active' => true,
         ])->assertOk()
-            ->assertJsonPath('tables.0.seats', 6);
+            ->assertJsonFragment(['id' => 'T99', 'seats' => 6]);
 
         $this->assertDatabaseHas('restaurant_tables', [
             'id' => $table->id,
@@ -124,7 +209,7 @@ class TableReservationWorkflowTest extends TestCase
             'phone' => '9831111111',
             'email' => 'priya@example.com',
             'date' => now()->toDateString(),
-            'time' => '20:00',
+            'time' => now()->addMinutes(20)->format('H:i'),
             'guests' => 4,
             'floor' => 'ground-floor',
             'table' => 'T88',
@@ -136,6 +221,43 @@ class TableReservationWorkflowTest extends TestCase
 
         $reservation = Reservation::where('phone', '9831111111')->firstOrFail();
         $this->assertDatabaseHas('restaurant_tables', ['id' => $table->id, 'status' => 'reserved']);
+
+        $futureTable = RestaurantTable::create([
+            'floor_id' => $floor->id,
+            'code' => 'T89',
+            'seats' => 4,
+            'shape' => 'square',
+            'status' => 'available',
+        ]);
+        $this->postJson('/reservations', [
+            'customer' => 'Evening Guest',
+            'phone' => '9833333333',
+            'email' => 'evening@example.com',
+            'date' => now()->toDateString(),
+            'time' => now()->addHours(5)->format('H:i'),
+            'guests' => 4,
+            'floor' => 'ground-floor',
+            'table' => 'T89',
+            'occasion' => 'Dinner',
+            'request' => null,
+            'source' => 'Phone',
+        ])->assertCreated();
+        $this->assertDatabaseHas('restaurant_tables', ['id' => $futureTable->id, 'status' => 'available']);
+
+        $this->postJson('/reservations', [
+            'customer' => 'Double Book',
+            'phone' => '9834444444',
+            'email' => 'double@example.com',
+            'date' => now()->toDateString(),
+            'time' => now()->addHours(5)->addMinutes(30)->format('H:i'),
+            'guests' => 2,
+            'floor' => 'ground-floor',
+            'table' => 'T89',
+            'occasion' => 'Dinner',
+            'request' => null,
+            'source' => 'Phone',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['table']);
 
         $this->patchJson("/reservations/{$reservation->id}/status", ['status' => 'confirmed'])
             ->assertOk();

@@ -75,10 +75,15 @@
             <div class="flex gap-1.5">
                 <select x-model="createDraft.table" class="h-10 flex-1 rounded-md border border-slate-300 bg-white px-2.5 text-[12.5px] font-medium focus:border-slate-900 focus:outline-none">
                     <option :value="null">No preference</option>
-                    <template x-for="t in tables.filter(t => t.floor === createDraft.floor)" :key="t.id"><option :value="t.id" x-text="t.id + ' — ' + t.seats + ' seats'"></option></template>
+                    <template x-for="t in preferredTableOptions" :key="t.id">
+                        <option :value="t.reserveCode || t.id" :disabled="!tableAvailableForDraft(t, createDraft)" x-text="tableOptionLabel(t)"></option>
+                    </template>
                 </select>
-                <button type="button" @click="swap('find')" class="h-10 shrink-0 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-bold text-slate-700 hover:border-slate-900">Find Table</button>
+                <button type="button" @click="openDraftFinder()" class="h-10 shrink-0 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-bold text-slate-700 hover:border-slate-900">Find Table</button>
             </div>
+            <p x-show="createDraft.table" class="mt-1 text-[10.5px] font-semibold"
+               :class="tableAvailableForDraft(table(createDraft.table), createDraft) ? 'text-emerald-700' : 'text-rose-600'"
+               x-text="tableAvailability(table(createDraft.table), createDraft).label"></p>
         </div>
 
         <div><label class="mb-1 block text-[10.5px] font-black uppercase tracking-wide text-slate-600">Occasion</label>
@@ -122,12 +127,16 @@
         </div>
         <div class="grid gap-1.5" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));">
             <template x-for="t in findResults" :key="t.id">
-                <button type="button" @click="pickFoundTable(t)" class="rounded-md border-2 border-emerald-400 bg-emerald-50 p-2.5 text-left hover:border-emerald-600">
+                <button type="button" @click="pickFoundTable(t)" :disabled="!tableAvailableForDraft(t, findDraft)"
+                        :class="availabilityClass(t, findDraft)"
+                        class="rounded-md border-2 p-2.5 text-left disabled:cursor-not-allowed">
                     <span class="pos-num block text-[15px] font-black text-slate-900" x-text="t.id"></span>
                     <span class="pos-num block text-[10.5px] font-semibold text-slate-500" x-text="t.seats + ' seats · ' + floorLabel(t.floor)"></span>
+                    <span class="mt-1 block text-[10px] font-black uppercase tracking-wide text-slate-600" x-text="tableStatusLabel(t.status)"></span>
+                    <span class="mt-0.5 block text-[10px] font-semibold text-slate-500" x-text="tableAvailability(t, findDraft).label"></span>
                 </button>
             </template>
-            <p x-show="!findResults.length" class="col-span-full py-8 text-center text-[12.5px] font-semibold text-slate-400">No tables free for this party size at that time.</p>
+            <p x-show="!findResults.length" class="col-span-full py-8 text-center text-[12.5px] font-semibold text-slate-400">No tables match this party size.</p>
         </div>
     </div>
     <x-slot:footer>

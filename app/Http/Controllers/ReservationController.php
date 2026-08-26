@@ -10,11 +10,15 @@ use App\Models\RestaurantTable;
 use App\Services\RealtimeNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ReservationController extends Controller
 {
+    private const RESERVATION_SLOT_MINUTES = 120;
+    private const RESERVATION_HOLD_BEFORE_MINUTES = 30;
+
     public function index(): View
     {
         return view('reservations', ['reservationsPayload' => $this->payload()]);
@@ -140,6 +144,9 @@ class ReservationController extends Controller
                 'floor' => str($table->floor?->name ?? 'Floor')->slug()->toString(),
                 'seats' => (int) $table->seats,
                 'status' => $table->status,
+                'groupId' => $table->is_merge_primary ? 'merge-' . $table->id : ($table->merged_with_table_id ? 'merge-' . $table->merged_with_table_id : null),
+                'mergedWithTableId' => $table->merged_with_table_id,
+                'groupPrimary' => $table->is_merge_primary,
             ])->values()->all(),
             'reservations' => Reservation::with(['table', 'floor', 'activities'])->latest('date')->latest('time')->limit(200)->get()->map(fn (Reservation $reservation) => $this->resource($reservation))->values()->all(),
         ];
@@ -192,6 +199,11 @@ class ReservationController extends Controller
     private function reservationData(array $data, Request $request, bool $creating = true): array
     {
         $table = ! empty($data['table']) ? RestaurantTable::where('code', $data['table'])->first() : null;
+        if ($table && ! $this->tableAvailableForSlot($table, $data['date'], $data['time'], $data['guests'], $creating ? null : $request->route('reservation')?->id)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'table' => "{$table->code} is not available for the selected date and time.",
+            ]);
+        }
 
         $payload = [
             ...($creating ? ['code' => $this->nextReservationCode(), 'created_by' => $request->user()?->employee?->id, 'status' => 'pending'] : []),
@@ -214,7 +226,11 @@ class ReservationController extends Controller
 
     private function syncTableStatus(Reservation $reservation): void
     {
-        if ($reservation->table_id && in_array($reservation->status, ['pending', 'confirmed', 'arrived'], true)) {
+        if (! $reservation->table_id || ! in_array($reservation->status, ['pending', 'confirmed', 'arrived'], true)) {
+            return;
+        }
+
+        if ($this->reservationIsLive($reservation) && in_array($reservation->table?->status, ['available', 'reserved'], true)) {
             $reservation->table?->update(['status' => 'reserved']);
         }
     }
@@ -225,6 +241,57 @@ class ReservationController extends Controller
         if ($table && $table->status === 'reserved') {
             $table->update(['status' => 'available']);
         }
+    }
+
+    private function tableAvailableForSlot(RestaurantTable $table, string $date, string $time, int $guests, ?int $ignoreReservationId = null): bool
+    {
+        $members = $this->tableGroupMembers($table);
+        $capacity = $members->sum(fn (RestaurantTable $member) => (int) $member->seats);
+
+        if ($capacity < $guests || $members->contains(fn (RestaurantTable $member) => $member->status === 'disabled')) {
+            return false;
+        }
+
+        $slot = Carbon::parse("{$date} {$time}");
+        $now = now();
+        if ($date === $now->toDateString() && $slot->lessThanOrEqualTo($now->copy()->addMinutes(self::RESERVATION_SLOT_MINUTES))) {
+            if ($members->contains(fn (RestaurantTable $member) => in_array($member->status, ['occupied', 'billing', 'cleaning'], true))) {
+                return false;
+            }
+        }
+
+        return ! Reservation::whereIn('table_id', $members->pluck('id'))
+            ->whereDate('date', $date)
+            ->whereIn('status', ['pending', 'confirmed', 'arrived', 'seated'])
+            ->when($ignoreReservationId, fn ($query) => $query->whereKeyNot($ignoreReservationId))
+            ->get()
+            ->contains(fn (Reservation $reservation) => abs(Carbon::parse($reservation->date->toDateString() . ' ' . substr((string) $reservation->time, 0, 5))->diffInMinutes($slot, false)) < self::RESERVATION_SLOT_MINUTES);
+    }
+
+    private function tableGroupMembers(RestaurantTable $table)
+    {
+        $groupId = $table->is_merge_primary ? $table->id : $table->merged_with_table_id;
+        if (! $groupId) {
+            return collect([$table]);
+        }
+
+        return RestaurantTable::whereKey($groupId)
+            ->orWhere('merged_with_table_id', $groupId)
+            ->get();
+    }
+
+    private function reservationIsLive(Reservation $reservation): bool
+    {
+        if (! $reservation->date || ! $reservation->time) {
+            return false;
+        }
+
+        $slot = Carbon::parse($reservation->date->toDateString() . ' ' . substr((string) $reservation->time, 0, 5));
+
+        return now()->between(
+            $slot->copy()->subMinutes(self::RESERVATION_HOLD_BEFORE_MINUTES),
+            $slot->copy()->addMinutes(self::RESERVATION_SLOT_MINUTES)
+        );
     }
 
     private function floorId(string $key): ?int

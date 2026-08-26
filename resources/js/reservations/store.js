@@ -148,7 +148,41 @@ export default function reservationsApp() {
             return this.reservation(id)?.customer || '';
         },
         canSaveDraft() {
-            return !!String(this.createDraft.customer || '').trim() && String(this.createDraft.phone || '').trim().length >= 10;
+            return !!String(this.createDraft.customer || '').trim()
+                && String(this.createDraft.phone || '').trim().length >= 10
+                && (!this.createDraft.table || this.tableAvailableForDraft(this.table(this.createDraft.table), this.createDraft));
+        },
+        table(id) {
+            return this.reservableTables.find((t) => t.id === id || t.reserveCode === id) || this.tables.find((t) => t.id === id);
+        },
+        get reservableTables() {
+            const seen = new Set();
+            const cards = [];
+            const rank = { disabled: 6, occupied: 5, billing: 4, cleaning: 3, reserved: 2, available: 1 };
+            for (const table of this.tables) {
+                if (seen.has(table.id)) continue;
+                if (!table.groupId) {
+                    cards.push({ ...table, reserveCode: table.id, members: [table.id] });
+                    seen.add(table.id);
+                    continue;
+                }
+
+                const members = this.tables.filter((t) => String(t.groupId || '') === String(table.groupId));
+                members.forEach((member) => seen.add(member.id));
+                const primary = members.find((t) => t.groupPrimary) || members[0];
+                const status = members.reduce((carry, member) => (rank[member.status] || 0) > (rank[carry] || 0) ? member.status : carry, 'available');
+                cards.push({
+                    ...primary,
+                    id: members.map((member) => member.id).join(' + '),
+                    reserveCode: primary.id,
+                    seats: members.reduce((sum, member) => sum + Number(member.seats || 0), 0),
+                    status,
+                    members: members.map((member) => member.id),
+                    merged: true,
+                });
+            }
+
+            return cards;
         },
 
         /* ---------------------------------------------------------------
@@ -156,6 +190,9 @@ export default function reservationsApp() {
            --------------------------------------------------------------- */
         statusLabel(s) {
             return { pending: 'Pending', confirmed: 'Confirmed', arrived: 'Arrived', seated: 'Seated', completed: 'Completed', cancelled: 'Cancelled', no_show: 'No Show' }[s] || s;
+        },
+        tableStatusLabel(s) {
+            return { available: 'Available', occupied: 'Occupied', reserved: 'Reserved', billing: 'Billing', cleaning: 'Cleaning', disabled: 'Disabled' }[s] || s;
         },
         statusClass(s) {
             return {
@@ -352,6 +389,10 @@ export default function reservationsApp() {
         async saveReservation() {
             const d = this.createDraft;
             if (!d.customer.trim() || d.phone.trim().length < 10) return;
+            if (d.table && !this.tableAvailableForDraft(this.table(d.table), d)) {
+                this.notify(`${d.table} is not available for that date and time`, 'warn');
+                return;
+            }
             const body = JSON.stringify({ ...d, deposit: d.deposit || 0 });
             if (d.id) {
                 const r = this.reservation(d.id);
@@ -373,17 +414,94 @@ export default function reservationsApp() {
             this.findDraft = { guests: 2, date: this.todayIso, time: '19:00', floor: 'all' };
             this.openOnly('find');
         },
+        openDraftFinder() {
+            this.findDraft = {
+                guests: this.createDraft.guests || 2,
+                date: this.createDraft.date || this.todayIso,
+                time: this.createDraft.time || '19:00',
+                floor: this.createDraft.floor || 'all',
+            };
+            this.swap('find');
+        },
+        slotMinutes() {
+            return 120;
+        },
+        slotDateTime(date, time) {
+            const value = `${date || this.todayIso}T${time || '19:00'}`;
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? new Date(`${this.todayIso}T19:00`) : parsed;
+        },
+        slotConflict(tableId, draft) {
+            const target = this.slotDateTime(draft.date, draft.time).getTime();
+            const windowMs = this.slotMinutes() * 60000;
+            return this.reservations.find((r) => {
+                if (r.id === draft.id || r.table !== tableId || r.date !== draft.date) return false;
+                if (!['pending', 'confirmed', 'arrived', 'seated'].includes(r.status)) return false;
+                return Math.abs(this.slotDateTime(r.date, r.time).getTime() - target) < windowMs;
+            });
+        },
+        slotConflictForTable(t, draft) {
+            return (t?.members || [t?.id]).map((id) => this.slotConflict(id, draft)).find(Boolean) || null;
+        },
+        tableAvailableForDraft(t, draft) {
+            return this.tableAvailability(t, draft).available;
+        },
+        tableAvailability(t, draft) {
+            if (!t) return { available: false, label: 'Unknown table', tone: 'blocked' };
+            if (t.seats < Number(draft.guests || 1)) return { available: false, label: `${t.seats} seats only`, tone: 'blocked' };
+            if (t.status === 'disabled') return { available: false, label: 'Disabled', tone: 'blocked' };
+
+            const conflict = this.slotConflictForTable(t, draft);
+            if (conflict) return { available: false, label: `Booked ${this.timeLabel(conflict.time)}`, tone: 'booked' };
+
+            const slot = this.slotDateTime(draft.date, draft.time);
+            const now = new Date();
+            const nearNow = draft.date === this.todayIso && slot.getTime() <= now.getTime() + this.slotMinutes() * 60000;
+            if (nearNow && ['occupied', 'billing', 'cleaning'].includes(t.status)) {
+                return { available: false, label: this.tableStatusLabel(t.status), tone: 'busy' };
+            }
+
+            if (['occupied', 'billing', 'cleaning'].includes(t.status)) {
+                return { available: true, label: `${this.tableStatusLabel(t.status)} now, free for slot`, tone: 'future' };
+            }
+
+            if (t.status === 'reserved') return { available: true, label: 'Reserved now, free for slot', tone: 'future' };
+            return { available: true, label: 'Available for slot', tone: 'available' };
+        },
+        tableOptionLabel(t, draft = this.createDraft) {
+            const availability = this.tableAvailability(t, draft);
+            return `${t.id} - ${t.seats} seats - ${this.tableStatusLabel(t.status)} - ${availability.label}`;
+        },
+        availabilityClass(t, draft = this.findDraft) {
+            const availability = this.tableAvailability(t, draft);
+            return {
+                available: 'border-emerald-400 bg-emerald-50 hover:border-emerald-600',
+                future: 'border-sky-300 bg-sky-50 hover:border-sky-500',
+                booked: 'border-amber-400 bg-amber-50 opacity-70',
+                busy: 'border-slate-300 bg-slate-100 opacity-70',
+                blocked: 'border-rose-300 bg-rose-50 opacity-70',
+            }[availability.tone] || 'border-slate-300 bg-white';
+        },
+        get preferredTableOptions() {
+            return this.reservableTables
+                .filter((t) => t.floor === this.createDraft.floor)
+                .sort((a, b) => Number(!this.tableAvailableForDraft(a, this.createDraft)) - Number(!this.tableAvailableForDraft(b, this.createDraft)) || a.seats - b.seats || a.id.localeCompare(b.id));
+        },
         get findResults() {
-            const busy = new Set(
-                this.reservations
-                    .filter((r) => r.date === this.findDraft.date && r.table && ['confirmed', 'arrived', 'seated'].includes(r.status))
-                    .map((r) => r.table)
-            );
-            return this.tables.filter((t) => !busy.has(t.id) && t.seats >= this.findDraft.guests && (this.findDraft.floor === 'all' || t.floor === this.findDraft.floor));
+            return this.reservableTables
+                .filter((t) => t.seats >= this.findDraft.guests && (this.findDraft.floor === 'all' || t.floor === this.findDraft.floor))
+                .sort((a, b) => Number(!this.tableAvailableForDraft(a, this.findDraft)) - Number(!this.tableAvailableForDraft(b, this.findDraft)) || a.seats - b.seats || a.id.localeCompare(b.id));
         },
         pickFoundTable(t) {
-            this.createDraft.table = t.id;
+            if (!this.tableAvailableForDraft(t, this.findDraft)) {
+                this.notify(`${t.id} is not available for that slot`, 'warn');
+                return;
+            }
+            this.createDraft.table = t.reserveCode || t.id;
             this.createDraft.floor = t.floor;
+            this.createDraft.date = this.findDraft.date;
+            this.createDraft.time = this.findDraft.time;
+            this.createDraft.guests = this.findDraft.guests;
             this.swap('create');
         },
     };

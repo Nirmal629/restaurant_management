@@ -30,6 +30,7 @@ const inr = (n, decimals = 0) =>
 const boot = window.posModule || {};
 const routes = window.posRoutes || {};
 const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+const pageParams = new URLSearchParams(window.location.search);
 
 /**
  * Alpine root for the POS terminal.
@@ -132,6 +133,7 @@ export default function posApp() {
                 this.order.id = boot.activeOrder.id;
                 this.order.code = boot.activeOrder.code;
                 this.order.table = boot.activeOrder.table || this.order.table;
+                this.order.floor = boot.activeOrder.floor || this.order.floor;
                 this.order.guests = boot.activeOrder.guests || this.order.guests;
                 this.order.waiter = boot.activeOrder.waiter || this.order.waiter;
                 this.order.customer = boot.activeOrder.customer || null;
@@ -140,6 +142,7 @@ export default function posApp() {
             }
             this.order.openedAt = Date.now() - 18 * 60000;
             this.syncReadyAlerts(boot.readyAlerts);
+            this.prepareItemsMode();
             this.tick();
             setInterval(() => this.tick(), 20000);
             this._unsubscribeRealtime = subscribeRealtime(['pos', 'orders', 'tables', 'reservations', 'inventory', 'menu'], () => this.refreshFromServer());
@@ -147,7 +150,8 @@ export default function posApp() {
         async refreshFromServer() {
             if (!routes.data || this.saving) return null;
             try {
-                const response = await fetch(routes.data, { headers: { Accept: 'application/json' } });
+                const url = this.order.id ? `${routes.data}?order=${this.order.id}` : routes.data;
+                const response = await fetch(url, { headers: { Accept: 'application/json' } });
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) return null;
                 this.applyServerState(data);
@@ -223,6 +227,7 @@ export default function posApp() {
                 this.order.id = data.activeOrder.id;
                 this.order.code = data.activeOrder.code;
                 this.order.table = data.activeOrder.table || this.order.table;
+                this.order.floor = data.activeOrder.floor || this.order.floor;
                 this.order.guests = data.activeOrder.guests || this.order.guests;
                 this.order.waiter = data.activeOrder.waiter || this.order.waiter;
                 this.order.customer = data.activeOrder.customer || null;
@@ -287,6 +292,24 @@ export default function posApp() {
             this.dietFilter = 'all';
             this.availableOnly = false;
             this.activeCat = 'all';
+        },
+        clearMenuSearch() {
+            this.clearFilters();
+            if (this.$refs.search) this.$refs.search.value = '';
+        },
+        prepareItemsMode() {
+            if (pageParams.get('mode') !== 'items') return;
+            this.clearMenuSearch();
+            this.$nextTick(() => {
+                const focusSearch = () => {
+                    this.clearMenuSearch();
+                    this.$refs.search?.focus();
+                    this.$refs.search?.select();
+                };
+                focusSearch();
+                setTimeout(focusSearch, 80);
+                setTimeout(focusSearch, 350);
+            });
         },
 
         /* ---------------------------------------------------------------
@@ -737,6 +760,7 @@ export default function posApp() {
         },
         pickTable(t) {
             if (t.status === 'cleaning') return;
+            this.orderType = 'dinein';
             this.order.table = t.id;
             this.order.floor = this.floorLabel(t.floor);
             if (t.guests) this.order.guests = t.guests;

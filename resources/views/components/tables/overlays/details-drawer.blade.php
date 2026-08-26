@@ -95,16 +95,17 @@
                     <x-pos.icon name="cash" class="h-4 w-4" /> Open POS
                 </button>
                 <div class="grid grid-cols-2 gap-1.5">
-                    <button type="button" @click="goToPos(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Add Items</button>
-                    <button type="button" @click="goToPos(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">View Order</button>
+                    <button type="button" @click="addItems(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Add Items</button>
+                    <button type="button" @click="viewOrder(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">View Order</button>
                     <button type="button" @click="openChangeWaiter(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Change Waiter</button>
                     <button type="button" @click="openTransfer(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Transfer Table</button>
                     <button type="button" x-show="activeCard.kind !== 'group'" @click="openMerge(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Merge Table</button>
                     <button type="button" @click="printBill(activeCard)" class="h-9 rounded-md border border-slate-300 bg-white text-[11.5px] font-bold text-slate-700 hover:border-slate-900">Print Running Bill</button>
                 </div>
-                <button type="button" @click="generateBill(activeCard)"
-                        class="flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-amber-500 text-[11.5px] font-black uppercase tracking-wide text-slate-950 hover:bg-amber-400">
-                    Generate Bill
+                <button type="button" @click="generateBill(activeCard)" :disabled="saving"
+                        class="flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-amber-500 text-[11.5px] font-black uppercase tracking-wide text-slate-950 hover:bg-amber-400 disabled:cursor-wait disabled:bg-slate-300">
+                    <span x-show="saving && savingAction === 'billing'" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-900/30 border-t-slate-900"></span>
+                    <span x-text="saving && savingAction === 'billing' ? 'Generating...' : 'Generate Bill'"></span>
                 </button>
             </div>
         </template>

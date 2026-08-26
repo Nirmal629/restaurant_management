@@ -20,7 +20,10 @@
             floors: @json(route('tables.floors.store')),
             base: @json(url('/tables')),
             pos: @json(route('pos')),
+            orders: @json(route('orders')),
+            posOrders: @json(url('/pos/orders')),
         };
+        window.realtimeVersionsUrl = @json(route('realtime.versions'));
         window.realtimeStreamUrl = @json(route('realtime.stream'));
     </script>
 </head>

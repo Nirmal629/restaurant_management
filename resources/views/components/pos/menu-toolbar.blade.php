@@ -4,7 +4,9 @@
     {{-- MenuSearch --}}
     <div class="relative min-w-[200px] flex-1 max-w-md">
         <x-pos.icon name="search" class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input x-ref="search" x-model="query" type="text" autocomplete="off"
+        <input x-ref="search" x-model="query" type="search" name="pos_menu_item_filter" autocomplete="off"
+               autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="search"
+               @focus="if (query && query.includes('@')) query = ''"
                placeholder="Search item / code / SKU…"
                class="h-9 w-full rounded-md border border-slate-300 bg-white pl-8 pr-16 text-[13px] font-medium text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900" />
         <div class="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">

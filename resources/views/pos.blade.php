@@ -18,6 +18,7 @@
             billOrder: @json(url('/pos/orders')),
             billing: @json(route('billing')),
         };
+        window.realtimeVersionsUrl = @json(route('realtime.versions'));
         window.realtimeStreamUrl = @json(route('realtime.stream'));
     </script>
 </head>

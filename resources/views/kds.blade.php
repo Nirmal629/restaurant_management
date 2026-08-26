@@ -19,6 +19,7 @@
             orders: @json(url('/kds/orders')),
             items: @json(url('/kds/items')),
         };
+        window.realtimeVersionsUrl = @json(route('realtime.versions'));
         window.realtimeStreamUrl = @json(route('realtime.stream'));
     </script>
 </head>

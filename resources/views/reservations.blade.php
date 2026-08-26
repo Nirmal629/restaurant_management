@@ -14,6 +14,7 @@
             base: @json(url('/reservations')),
             pos: @json(route('pos')),
         };
+        window.realtimeVersionsUrl = @json(route('realtime.versions'));
         window.realtimeStreamUrl = @json(route('realtime.stream'));
     </script>
 </head>

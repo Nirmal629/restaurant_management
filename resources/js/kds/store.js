@@ -35,7 +35,7 @@ export default function kdsApp() {
         /* ---------------------------------------------------------------
            Mutable dummy state
            --------------------------------------------------------------- */
-        tickets: (boot.tickets || TICKETS).map((t) => ({ ...t, items: t.items.map((i) => ({ ...i, modifiers: [...(i.modifiers || [])] })) })),
+        tickets: (boot.tickets || TICKETS).map((t) => ({ ...t, key: t.key || `${t.orderId}-${t.kot}`, items: t.items.map((i) => ({ ...i, modifiers: [...(i.modifiers || [])] })) })),
         history: [],
         now: 0,
         clock: '',
@@ -132,10 +132,10 @@ export default function kdsApp() {
             if (data.venue) this.venue = data.venue;
             if (data.operator) this.operator = data.operator;
             if (data.tickets) {
-                const existing = new Set(this.tickets.map((t) => `${t.orderId}-${t.kot}`));
-                this.tickets = data.tickets.map((t) => ({ ...t, items: t.items.map((i) => ({ ...i, modifiers: [...(i.modifiers || [])] })) }));
+                const existing = new Set(this.tickets.map((t) => t.key || `${t.orderId}-${t.kot}`));
+                this.tickets = data.tickets.map((t) => ({ ...t, key: t.key || `${t.orderId}-${t.kot}`, items: t.items.map((i) => ({ ...i, modifiers: [...(i.modifiers || [])] })) }));
                 this.tickets
-                    .filter((t) => !existing.has(`${t.orderId}-${t.kot}`))
+                    .filter((t) => !existing.has(t.key || `${t.orderId}-${t.kot}`))
                     .forEach((t) => this.pushAlert(t));
             }
         },
@@ -180,8 +180,8 @@ export default function kdsApp() {
         /* ---------------------------------------------------------------
            Lookups & labels
            --------------------------------------------------------------- */
-        ticket(kot) {
-            return this.tickets.find((t) => t.kot === kot);
+        ticket(key) {
+            return this.tickets.find((t) => (t.key || t.kot) === key);
         },
         get activeTicket() {
             return this.ticket(this.activeKot);
@@ -379,7 +379,7 @@ export default function kdsApp() {
            Detail drawer
            --------------------------------------------------------------- */
         openDetail(t) {
-            this.activeKot = t.kot;
+            this.activeKot = t.key || t.kot;
             this.open('detail');
         },
 
@@ -387,7 +387,7 @@ export default function kdsApp() {
            Priority
            --------------------------------------------------------------- */
         openPriority(t) {
-            this.priorityDraft = { kot: t.kot, value: t.priority };
+            this.priorityDraft = { kot: t.key || t.kot, value: t.priority };
             this.swap('priority');
         },
         confirmPriority() {
@@ -401,7 +401,7 @@ export default function kdsApp() {
            Reprint
            --------------------------------------------------------------- */
         openReprint(t) {
-            this.reprintDraft = { kot: t.kot, reason: '' };
+            this.reprintDraft = { kot: t.key || t.kot, label: t.kot, reason: '' };
             this.swap('reprint');
         },
         confirmReprint() {
@@ -419,7 +419,7 @@ export default function kdsApp() {
             this.notify(`Cancellation on ${i.name} acknowledged`, 'warn');
         },
         openUnavailable(t, i) {
-            this.unavailableDraft = { kot: t.kot, uid: i.uid, reason: '' };
+            this.unavailableDraft = { kot: t.key || t.kot, uid: i.uid, reason: '' };
             this.swap('unavailable');
         },
         confirmUnavailable() {
@@ -513,7 +513,7 @@ export default function kdsApp() {
            New-KOT alert queue
            --------------------------------------------------------------- */
         pushAlert(t) {
-            const id = `${t.kot}-${this.notifications.length}`;
+            const id = `${t.key || t.kot}-${this.notifications.length}`;
             this.notifications.push({ id, kot: t.kot, label: this.orderLabel(t), count: t.items.length });
             // backend: play a chime here when soundOn && soundModes.newKot
             setTimeout(() => this.dismissAlert(id), 6000);

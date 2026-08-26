@@ -15,7 +15,7 @@
     </header>
 
     <div class="pos-scroll space-y-2 p-2">
-        <template x-for="t in sortedFor('{{ $status }}')" :key="t.kot">
+        <template x-for="t in sortedFor('{{ $status }}')" :key="t.key || (t.orderId + '-' + t.kot)">
             <div><x-kds.kot-card ticket="t" /></div>
         </template>
 

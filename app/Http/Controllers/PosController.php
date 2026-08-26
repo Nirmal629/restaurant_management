@@ -57,15 +57,20 @@ class PosController extends Controller
             }
         }
 
+        $tableId = $this->tableId($data['table'] ?? null);
+        if ($tableId) {
+            $data['orderType'] = 'dinein';
+        }
+
         $employee = $request->user()?->employee;
 
-        $order = DB::transaction(function () use ($data, $menuItems, $stock, $employee) {
+        $order = DB::transaction(function () use ($data, $menuItems, $stock, $employee, $tableId) {
             $order = isset($data['orderId'])
                 ? Order::lockForUpdate()->findOrFail($data['orderId'])
                 : Order::create([
                     'code' => $this->nextOrderCode(),
                     'type' => $data['orderType'],
-                    'table_id' => $this->tableId($data['table'] ?? null),
+                    'table_id' => $tableId,
                     'customer_id' => $data['customerId'] ?? null,
                     'waiter_id' => $employee?->id,
                     'guests' => $data['guests'] ?? null,
@@ -76,6 +81,14 @@ class PosController extends Controller
 
             if ($order->status !== 'open') {
                 throw ValidationException::withMessages(['order' => 'Only open orders can receive new KOT items.']);
+            }
+
+            if ($tableId && ($order->type !== 'dinein' || ! $order->table_id)) {
+                $order->update([
+                    'type' => 'dinein',
+                    'table_id' => $tableId,
+                    'guests' => $data['guests'] ?? $order->guests,
+                ]);
             }
 
             $round = ((int) $order->kots()->max('round')) + 1;
@@ -192,6 +205,9 @@ class PosController extends Controller
 
     private function payload(?Order $activeOrder = null): array
     {
+        $activeOrder ??= request()->integer('order')
+            ? Order::with($this->orderRelations())->whereKey(request()->integer('order'))->first()
+            : null;
         $activeOrder ??= Order::with($this->orderRelations())->whereIn('status', ['open', 'billing'])->latest('id')->first();
 
         return [
@@ -254,7 +270,8 @@ class PosController extends Controller
             'id' => $order->id,
             'code' => $order->code,
             'type' => $order->type,
-            'table' => $order->table?->name,
+            'table' => $this->tableLabel($order),
+            'floor' => $order->table?->floor?->name,
             'guests' => $order->guests,
             'waiter' => $order->waiter?->name,
             'customer' => $order->customer ? ['id' => $order->customer->id, 'name' => $order->customer->name, 'phone' => $order->customer->phone] : null,
@@ -317,7 +334,13 @@ class PosController extends Controller
 
     private function tableId(?string $name): ?int
     {
-        return $name ? RestaurantTable::where('name', $name)->orWhere('code', $name)->value('id') : null;
+        if (! $name) {
+            return null;
+        }
+
+        $code = trim(str($name)->before('+')->toString());
+
+        return RestaurantTable::where('name', $code)->orWhere('code', $code)->value('id');
     }
 
     private function nextOrderCode(): string
@@ -337,9 +360,31 @@ class PosController extends Controller
         return 'KOT-' . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
     }
 
+    private function tableLabel(Order $order): ?string
+    {
+        $table = $order->table;
+        if (! $table) {
+            return null;
+        }
+
+        $groupId = $table->is_merge_primary ? $table->id : $table->merged_with_table_id;
+        if (! $groupId) {
+            return $table->code;
+        }
+
+        $tables = RestaurantTable::where('id', $groupId)
+            ->orWhere('merged_with_table_id', $groupId)
+            ->get()
+            ->sortBy(fn (RestaurantTable $member) => $member->id === $groupId ? 0 : 1)
+            ->pluck('code')
+            ->implode(' + ');
+
+        return $tables ?: $table->code;
+    }
+
     private function orderRelations(): array
     {
-        return ['table', 'customer', 'waiter', 'items.menuItem.station', 'items.station', 'kots', 'invoice.payments'];
+        return ['table.floor', 'customer', 'waiter', 'items.menuItem.station', 'items.station', 'kots', 'invoice.payments'];
     }
 
     private function operator(): array

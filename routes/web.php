@@ -33,6 +33,7 @@ Route::match(['get', 'post'], '/logout', [AuthenticatedSessionController::class,
     ->name('logout');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/realtime/versions', [RealtimeController::class, 'versions'])->name('realtime.versions');
     Route::get('/realtime/stream', [RealtimeController::class, 'stream'])->name('realtime.stream');
     Route::get('/change-password', [PasswordController::class, 'edit'])->name('password.change');
     Route::put('/change-password', [PasswordController::class, 'update'])->name('password.update');
@@ -54,6 +55,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/tables/{table}/status', [TableController::class, 'status'])->middleware('permission:Orders,Edit')->name('tables.status');
     Route::post('/tables/{table}/start', [TableController::class, 'start'])->middleware('permission:Orders,Create')->name('tables.start');
     Route::post('/tables/{table}/reserve', [TableController::class, 'reserve'])->middleware('permission:Orders,Create')->name('tables.reserve');
+    Route::post('/tables/{table}/transfer', [TableController::class, 'transfer'])->middleware('permission:Orders,Edit')->name('tables.transfer');
+    Route::patch('/tables/{table}/waiter', [TableController::class, 'waiter'])->middleware('permission:Orders,Edit')->name('tables.waiter');
+    Route::post('/tables/{table}/merge', [TableController::class, 'merge'])->middleware('permission:Orders,Edit')->name('tables.merge');
     Route::post('/tables/floors', [TableController::class, 'storeFloor'])->middleware('permission:Orders,Edit')->name('tables.floors.store');
     Route::get('/kds', [KdsController::class, 'index'])->middleware('permission:Kitchen,View')->name('kds');
     Route::get('/kds/data', [KdsController::class, 'data'])->middleware('permission:Kitchen,View')->name('kds.data');

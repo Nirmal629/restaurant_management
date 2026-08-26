@@ -24,11 +24,33 @@
             'border-slate-300 bg-slate-100 hover:border-slate-500',
             {{ $card }}.kind === 'group' ? 'ring-1 ring-inset ring-slate-900/10' : '',
         ]"
-        class="flr-card relative flex flex-col justify-between border-2 p-2 text-left">
+        class="flr-card group relative flex flex-col justify-between border-2 p-2 text-left">
 
     {{-- Group link glyph --}}
     <span x-show="{{ $card }}.kind === 'group'"
           class="absolute -top-1.5 left-2 rounded bg-slate-900 px-1 text-[8.5px] font-black uppercase tracking-wide text-white">Group</span>
+    <div x-show="upcomingBookings({{ $card }}).length"
+         x-cloak
+         class="pointer-events-none absolute left-1/2 top-full z-40 mt-1 hidden w-64 -translate-x-1/2 rounded-md border border-slate-300 bg-white p-2 text-left shadow-xl group-hover:block group-focus-visible:block">
+        <p class="mb-1.5 text-[10px] font-black uppercase tracking-wide text-slate-500">Upcoming Bookings</p>
+        <template x-for="day in ['today', 'tomorrow']" :key="day">
+            <div x-show="bookingsForDay({{ $card }}, day).length" class="mb-1.5 last:mb-0">
+                <p class="mb-1 text-[9.5px] font-black uppercase tracking-wide text-slate-400" x-text="bookingDayLabel(day)"></p>
+                <div class="space-y-1">
+                    <template x-for="booking in bookingsForDay({{ $card }}, day)" :key="booking.id">
+                        <div class="rounded border border-slate-200 bg-slate-50 px-2 py-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="pos-num text-[11px] font-black text-slate-900" x-text="bookingTimeLabel(booking.time)"></span>
+                                <span class="rounded bg-violet-100 px-1 text-[8.5px] font-black uppercase tracking-wide text-violet-700" x-text="bookingStatusLabel(booking.status)"></span>
+                            </div>
+                            <p class="truncate text-[10.5px] font-bold text-slate-700" x-text="booking.customer"></p>
+                            <p class="pos-num text-[9.5px] font-semibold text-slate-500" x-text="booking.guests + ' guests' + (booking.phone ? ' - ' + booking.phone : '')"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
 
     {{-- Row 1: id · seats --}}
     <div class="flex items-start justify-between">

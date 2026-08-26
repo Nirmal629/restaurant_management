@@ -6,7 +6,8 @@
         <div class="flex items-center gap-2">
             <div class="relative">
                 <x-pos.icon name="search" class="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <input x-model="tableQuery" data-autofocus placeholder="Search table…"
+                <input x-model="tableQuery" data-autofocus name="pos_table_lookup"
+                       autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="Search table…"
                        class="h-8 w-40 rounded-md border border-slate-300 bg-white pl-7 pr-2 text-[12px] font-medium focus:border-slate-900 focus:outline-none" />
             </div>
             <button type="button" @click="tableAvailableOnly = !tableAvailableOnly"

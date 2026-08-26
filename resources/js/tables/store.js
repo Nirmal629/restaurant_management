@@ -51,6 +51,7 @@ export default function tablesApp(posUrl) {
         overlay: null,
         toast: null,
         saving: false,
+        savingAction: '',
 
         // active record for whichever dialog is open
         activeTableId: null,
@@ -139,6 +140,7 @@ export default function tablesApp(posUrl) {
         async api(url, options = {}) {
             if (!url || this.saving) return null;
             this.saving = true;
+            this.savingAction = options.action || '';
             try {
                 const response = await fetch(url, {
                     ...options,
@@ -159,6 +161,7 @@ export default function tablesApp(posUrl) {
                 return data;
             } finally {
                 this.saving = false;
+                this.savingAction = '';
             }
         },
 
@@ -173,11 +176,33 @@ export default function tablesApp(posUrl) {
             return id ? `${routes.base}/${id}${suffix}` : null;
         },
         reservation(id) {
-            return this.reservations.find((r) => r.id === id);
+            if (id == null) return null;
+            return this.reservations.find((r) => String(r.id) === String(id) || String(r.dbId) === String(id));
         },
         reservationFor(tableId) {
             const t = this.table(tableId);
-            return t?.reservationId ? this.reservation(t.reservationId) : null;
+            if (t?.reservationId) return this.reservation(t.reservationId);
+            return this.reservations.find((r) => String(r.tableId) === String(tableId) || String(r.table) === String(tableId)) || null;
+        },
+        activeReservation() {
+            const reservation = this.reservation(this.activeReservationId) || this.reservationFor(this.activeTableId);
+            if (reservation) return reservation;
+
+            const card = this.activeCard;
+            if (!card || card.status !== 'reserved') return null;
+
+            return {
+                id: card.reservationId || 'Reservation',
+                tableId: card.id,
+                customer: card.reservationCustomer || card.customer || 'Guest',
+                phone: card.reservationPhone || '',
+                date: card.reservationDate || '',
+                time: card.reservationTime || 'Reserved',
+                guests: card.reservationGuests || card.guests || card.seats || 0,
+                notes: card.reservationNotes || '',
+                status: 'RESERVED',
+                synthetic: true,
+            };
         },
         reservationTime(card) {
             return this.reservationFor(card.id)?.time || card.reservationTime || 'Reserved';
@@ -188,6 +213,47 @@ export default function tablesApp(posUrl) {
             const guests = reservation?.guests || card.reservationGuests || card.seats || 0;
             return `${customer} - ${guests} guest${Number(guests) === 1 ? '' : 's'}`;
         },
+        bookingDates() {
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+            return {
+                today: today.toISOString().slice(0, 10),
+                tomorrow: tomorrow.toISOString().slice(0, 10),
+            };
+        },
+        tableIdsForCard(card) {
+            if (!card) return [];
+            if (card.kind === 'group' && card.groupId) return this.groupMembers(card.groupId).map((t) => t.id);
+            return [card.id];
+        },
+        upcomingBookings(card) {
+            const dates = this.bookingDates();
+            const ids = this.tableIdsForCard(card).map(String);
+            return this.reservations
+                .filter((r) => ids.includes(String(r.tableId || r.table)))
+                .filter((r) => [dates.today, dates.tomorrow].includes(r.date))
+                .filter((r) => !['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(String(r.status || '').toUpperCase()))
+                .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+        },
+        bookingsForDay(card, day) {
+            const dates = this.bookingDates();
+            return this.upcomingBookings(card).filter((r) => r.date === dates[day]);
+        },
+        bookingDayLabel(day) {
+            return day === 'today' ? 'Today' : 'Tomorrow';
+        },
+        bookingTimeLabel(time) {
+            if (!time || !String(time).includes(':')) return '-';
+            const [hours, minutes] = String(time).split(':').map(Number);
+            if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return '-';
+            const period = hours >= 12 ? 'PM' : 'AM';
+            const h12 = hours % 12 === 0 ? 12 : hours % 12;
+            return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
+        },
+        bookingStatusLabel(status) {
+            return String(status || 'PENDING').replace('_', ' ').toLowerCase();
+        },
         cleaningLabel(card) {
             return typeof card.since === 'number' ? `${card.since} min` : 'Cleaning';
         },
@@ -195,10 +261,20 @@ export default function tablesApp(posUrl) {
             return this.floors.find((f) => f.key === key)?.label || key;
         },
         groupMembers(groupId) {
-            return this.tables.filter((t) => t.groupId === groupId);
+            return this.tables.filter((t) => String(t.groupId || '') === String(groupId || ''));
         },
         primaryOfGroup(groupId) {
             return this.groupMembers(groupId).find((t) => t.groupPrimary) || this.groupMembers(groupId)[0];
+        },
+        orderSourceOfGroup(groupId) {
+            const members = this.groupMembers(groupId);
+            return members.find((t) => t.orderId) || members.find((t) => t.groupPrimary) || members[0];
+        },
+        orderIdFor(card) {
+            if (!card) return null;
+            if (card.orderId) return card.orderId;
+            if (!card.groupId) return null;
+            return this.orderSourceOfGroup(card.groupId)?.orderId || null;
         },
         isLong(t) {
             return typeof t.since === 'number' && t.status === 'occupied' && t.since >= this.config.longRunningMinutes;
@@ -217,8 +293,18 @@ export default function tablesApp(posUrl) {
                     const members = this.groupMembers(t.groupId);
                     members.forEach((m) => seen.add(m.id));
                     const primary = this.primaryOfGroup(t.groupId);
+                    const orderSource = this.orderSourceOfGroup(t.groupId) || primary;
                     cards.push({
                         ...primary,
+                        orderId: orderSource?.orderId,
+                        orderCode: orderSource?.orderCode,
+                        guests: orderSource?.guests,
+                        waiter: orderSource?.waiter,
+                        customer: orderSource?.customer,
+                        amount: orderSource?.amount,
+                        since: orderSource?.since,
+                        kitchen: orderSource?.kitchen,
+                        items: orderSource?.items || [],
                         kind: 'group',
                         groupId: t.groupId,
                         members,
@@ -339,7 +425,7 @@ export default function tablesApp(posUrl) {
             switch (card.status) {
                 case 'available': return this.open('quick');
                 case 'occupied': return this.open('details');
-                case 'reserved': this.activeReservationId = card.reservationId; return this.open('reservation');
+                case 'reserved': this.activeReservationId = card.reservationId || this.reservationFor(card.id)?.id || null; return this.open('reservation');
                 case 'billing': return this.open('billing');
                 case 'cleaning': return this.open('cleaning');
                 case 'disabled': return this.open('disabled');
@@ -412,8 +498,20 @@ export default function tablesApp(posUrl) {
            Cross-module navigation (real link — POS route already exists)
            --------------------------------------------------------------- */
         goToPos(card) {
-            // backend: carry the table/order context into the POS session
-            window.location.href = this.posUrl;
+            const orderId = this.orderIdFor(card);
+            window.location.href = orderId ? `${this.posUrl}?order=${orderId}` : this.posUrl;
+        },
+        addItems(card) {
+            const orderId = this.orderIdFor(card);
+            if (!orderId) {
+                this.notify('No active order found for this table.', 'warn');
+                return;
+            }
+            window.location.href = `${this.posUrl}?order=${orderId}&mode=items`;
+        },
+        viewOrder(card) {
+            const orderId = this.orderIdFor(card);
+            window.location.href = orderId && routes.orders ? `${routes.orders}?order=${orderId}` : (routes.orders || '#');
         },
 
         /* ---------------------------------------------------------------
@@ -516,7 +614,7 @@ export default function tablesApp(posUrl) {
         async markDisabled(card) {
             const t = this.table(card.id);
             if (!t) return;
-            const data = await this.api(this.tableUrl(t, '/status'), { method: 'PATCH', body: JSON.stringify({ status: 'disabled' }) });
+            const data = await this.api(this.tableUrl(t, '/status'), { method: 'PATCH', action: 'disable', body: JSON.stringify({ status: 'disabled' }) });
             if (!data) return;
             this.closeAll();
             this.notify(`${t.id} marked disabled`, 'warn');
@@ -524,7 +622,7 @@ export default function tablesApp(posUrl) {
         async markAvailable(card) {
             const t = this.table(card.id);
             if (!t) return;
-            const data = await this.api(this.tableUrl(t, '/status'), { method: 'PATCH', body: JSON.stringify({ status: 'available' }) });
+            const data = await this.api(this.tableUrl(t, '/status'), { method: 'PATCH', action: 'available', body: JSON.stringify({ status: 'available' }) });
             if (!data) return;
             this.closeAll();
             this.notify(`${card.label} is now available`, 'success');
@@ -532,7 +630,7 @@ export default function tablesApp(posUrl) {
         async markCleaningStart(card) {
             const t = this.table(card.id);
             if (!t) return;
-            const data = await this.api(this.tableUrl(t, '/status'), { method: 'PATCH', body: JSON.stringify({ status: 'cleaning' }) });
+            const data = await this.api(this.tableUrl(t, '/status'), { method: 'PATCH', action: 'cleaning', body: JSON.stringify({ status: 'cleaning' }) });
             if (!data) return;
             this.closeAll();
             this.notify(`${card.label} sent for cleaning`);
@@ -541,15 +639,28 @@ export default function tablesApp(posUrl) {
         /* ---------------------------------------------------------------
            Billing
            --------------------------------------------------------------- */
-        generateBill(card) {
-            (card.ids || [card.id]).forEach((id) => {
-                const t = this.table(id);
-                if (t) t.status = 'billing';
-            });
-            this.swap('billing');
-        },
         printBill(card) {
-            this.notify(`Bill for ${card.label} sent to printer`);
+            const lines = (card.items || []).map((item) => `
+                <tr><td>${item.name}</td><td style="text-align:right">${item.qty}</td><td>${item.state || ''}</td></tr>
+            `).join('');
+            const popup = window.open('', '_blank', 'width=420,height=640');
+            if (!popup) {
+                this.notify('Allow popups to print the running bill.', 'warn');
+                return;
+            }
+            popup.document.write(`
+                <html><head><title>Running Bill ${card.orderCode || card.label}</title>
+                <style>body{font-family:Arial,sans-serif;padding:18px}h1{font-size:18px}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:8px;text-align:left}.total{font-size:18px;font-weight:700;text-align:right;margin-top:16px}</style>
+                </head><body>
+                <h1>Running Bill</h1>
+                <p><strong>Table:</strong> ${card.label}<br><strong>Order:</strong> ${card.orderCode || '-'}<br><strong>Waiter:</strong> ${card.waiter || '-'}</p>
+                <table><thead><tr><th>Item</th><th style="text-align:right">Qty</th><th>Status</th></tr></thead><tbody>${lines || '<tr><td colspan="3">No items punched yet.</td></tr>'}</tbody></table>
+                <p class="total">Total: ${this.money(card.amount)}</p>
+                </body></html>
+            `);
+            popup.document.close();
+            popup.focus();
+            popup.print();
         },
         cancelBill(card) {
             const t = this.table(card.id);
@@ -569,12 +680,17 @@ export default function tablesApp(posUrl) {
             this.waiterDraft = { tableId: card.id, waiter: card.waiter };
             this.swap('waiter');
         },
-        confirmWaiterChange() {
+        async confirmWaiterChange() {
             const t = this.table(this.waiterDraft.tableId);
             if (!t || !this.waiterDraft.waiter) return;
-            t.waiter = this.waiterDraft.waiter;
+            const data = await this.api(this.tableUrl(t, '/waiter'), {
+                method: 'PATCH',
+                action: 'waiter',
+                body: JSON.stringify({ waiter: this.waiterDraft.waiter }),
+            });
+            if (!data) return;
             this.closeAll();
-            this.notify(`${t.waiter} is now serving ${t.id}`);
+            this.notify(data.message || `${this.waiterDraft.waiter} is now serving ${t.id}`, 'success');
         },
 
         /* ---------------------------------------------------------------
@@ -591,28 +707,20 @@ export default function tablesApp(posUrl) {
             return this.tables.filter((t) => t.status === 'available' && t.id !== from.id && t.seats >= needed);
         },
         /** Reserved tables move only the reservation link; occupied tables move the whole running order. */
-        confirmTransfer() {
+        async confirmTransfer() {
             const from = this.table(this.transferDraft.fromId);
             const to = this.table(this.transferDraft.toId);
             if (!from || !to) return;
 
-            if (from.status === 'reserved') {
-                const r = this.reservationFor(from.id);
-                to.status = 'reserved';
-                to.reservationId = from.reservationId;
-                if (r) r.tableId = to.id;
-                from.status = 'available';
-                from.reservationId = undefined;
-                this.closeAll();
-                this.notify(`Reservation moved from ${from.id} to ${to.id}`, 'success');
-                return;
-            }
+            const data = await this.api(this.tableUrl(from, '/transfer'), {
+                method: 'POST',
+                action: 'transfer',
+                body: JSON.stringify({ to: to.id }),
+            });
+            if (!data) return;
 
-            const { status, guests, waiter, customer, orderCode, amount, since, kitchen, items } = from;
-            Object.assign(to, { status, guests, waiter, customer, orderCode, amount, since, kitchen, items });
-            Object.assign(from, { status: 'cleaning', since: 0, guests: undefined, waiter: undefined, customer: undefined, orderCode: undefined, amount: undefined, kitchen: undefined, items: [] });
             this.closeAll();
-            this.notify(`Order moved from ${from.id} to ${to.id}`, 'success');
+            this.notify(data.message || `${from.id} transferred to ${to.id}`, 'success');
         },
 
         /* ---------------------------------------------------------------
@@ -627,18 +735,33 @@ export default function tablesApp(posUrl) {
             if (!primary) return [];
             return this.tables.filter((t) => t.status === 'available' && t.floor === primary.floor && t.id !== primary.id);
         },
-        confirmMerge() {
+        async confirmMerge() {
             const primary = this.table(this.mergeDraft.primaryId);
             const secondary = this.table(this.mergeDraft.secondaryId);
             if (!primary || !secondary) return;
-            const groupId = 'G' + Date.now().toString(36);
-            primary.groupId = groupId;
-            primary.groupPrimary = true;
-            secondary.groupId = groupId;
-            secondary.groupPrimary = false;
-            secondary.status = primary.status;
+            const data = await this.api(this.tableUrl(primary, '/merge'), {
+                method: 'POST',
+                action: 'merge',
+                body: JSON.stringify({ with: secondary.id }),
+            });
+            if (!data) return;
+            await this.refreshTables();
             this.closeAll();
-            this.notify(`${primary.id} + ${secondary.id} merged`, 'success');
+            this.notify(data.message || `${primary.id} + ${secondary.id} merged`, 'success');
+        },
+        async generateBill(card) {
+            const orderId = this.orderIdFor(card);
+            if (!orderId) {
+                this.notify('No active order found for this table.', 'warn');
+                return;
+            }
+            const data = await this.api(`${routes.posOrders}/${orderId}/billing`, {
+                method: 'POST',
+                action: 'billing',
+                body: JSON.stringify({}),
+            });
+            if (!data) return;
+            window.location.href = data.redirect || '/billing';
         },
         openUnmerge(groupId) {
             this.activeGroupId = groupId;

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Employee;
 use App\Models\Floor;
 use App\Models\Order;
 use App\Models\Reservation;
@@ -10,6 +11,7 @@ use App\Models\RestaurantTable;
 use App\Services\RealtimeNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Carbon\Carbon;
@@ -117,8 +119,16 @@ class TableController extends Controller
             'status' => ['required', Rule::in(['available', 'cleaning', 'disabled'])],
         ]);
 
-        if ($data['status'] === 'available' && $table->orders()->whereIn('status', ['open', 'billing'])->exists()) {
-            return response()->json(['message' => 'Close the active order before marking this table available.'], 422);
+        if ($data['status'] === 'available') {
+            $activeOrders = $table->orders()->with('items')->whereIn('status', ['open', 'billing'])->get();
+
+            if ($table->status !== 'cleaning') {
+                return response()->json(['message' => 'Close the active order before marking this table available.'], 422);
+            }
+
+            if ($activeOrders->isNotEmpty()) {
+                $activeOrders->each->update(['status' => 'cancelled']);
+            }
         }
 
         $table->update([
@@ -129,6 +139,149 @@ class TableController extends Controller
         $realtime->touch(['tables', 'reservations', 'orders', 'billing']);
 
         return response()->json([...$this->payload(), 'message' => 'Table status updated']);
+    }
+
+    public function transfer(Request $request, RestaurantTable $table, RealtimeNotifier $realtime): JsonResponse
+    {
+        $data = $request->validate([
+            'to' => ['required', 'string', 'exists:restaurant_tables,code'],
+        ]);
+
+        $target = RestaurantTable::where('code', $data['to'])->firstOrFail();
+
+        if ($target->is($table)) {
+            return response()->json(['message' => 'Choose a different table.'], 422);
+        }
+
+        if ($target->status !== 'available') {
+            return response()->json(['message' => 'Target table must be available.'], 422);
+        }
+
+        DB::transaction(function () use ($table, $target) {
+            $table->refresh();
+            $target->refresh();
+
+            if ($table->status === 'reserved') {
+                $reservation = $table->reservations()
+                    ->whereIn('status', ['pending', 'confirmed', 'arrived'])
+                    ->whereDate('date', now()->toDateString())
+                    ->orderBy('time')
+                    ->first();
+
+                if (! $reservation) {
+                    abort(422, 'No active reservation found for this table.');
+                }
+
+                if ($target->seats < $reservation->guests) {
+                    abort(422, 'Target table does not have enough seats.');
+                }
+
+                $reservation->update([
+                    'table_id' => $target->id,
+                    'floor_id' => $target->floor_id,
+                ]);
+                $table->update(['status' => 'available']);
+                $target->update(['status' => 'reserved']);
+
+                return;
+            }
+
+            if (! in_array($table->status, ['occupied', 'billing'], true)) {
+                abort(422, 'Only occupied, billing, or reserved tables can be transferred.');
+            }
+
+            $order = $table->orders()
+                ->whereIn('status', ['open', 'billing'])
+                ->latest('id')
+                ->first();
+
+            if (! $order) {
+                abort(422, 'No active order found for this table.');
+            }
+
+            if ($target->seats < (int) ($order->guests ?? 1)) {
+                abort(422, 'Target table does not have enough seats.');
+            }
+
+            $targetStatus = $table->status;
+            $table->orders()
+                ->whereIn('status', ['open', 'billing'])
+                ->update(['table_id' => $target->id]);
+            $target->update(['status' => $targetStatus]);
+            $table->update(['status' => 'cleaning']);
+        });
+
+        $realtime->touch(['tables', 'orders', 'pos', 'billing', 'reservations']);
+
+        return response()->json([...$this->payload(), 'message' => "Table {$table->code} transferred to {$target->code}"]);
+    }
+
+    public function waiter(Request $request, RestaurantTable $table, RealtimeNotifier $realtime): JsonResponse
+    {
+        $data = $request->validate([
+            'waiter' => ['required', 'string', 'exists:employees,name'],
+        ]);
+
+        $order = $table->orders()->whereIn('status', ['open', 'billing'])->latest('id')->first();
+        if (! $order) {
+            return response()->json(['message' => 'No active order found for this table.'], 422);
+        }
+
+        $employee = Employee::where('name', $data['waiter'])->firstOrFail();
+        $order->update(['waiter_id' => $employee->id]);
+        $realtime->touch(['tables', 'orders', 'pos', 'billing']);
+
+        return response()->json([...$this->payload(), 'message' => "{$employee->name} assigned to {$table->code}"]);
+    }
+
+    public function merge(Request $request, RestaurantTable $table, RealtimeNotifier $realtime): JsonResponse
+    {
+        $data = $request->validate([
+            'with' => ['required', 'string', 'exists:restaurant_tables,code'],
+        ]);
+
+        $secondary = RestaurantTable::where('code', $data['with'])->firstOrFail();
+
+        if ($secondary->is($table)) {
+            return response()->json(['message' => 'Choose a different table to merge.'], 422);
+        }
+
+        if (! in_array($table->status, ['occupied', 'billing'], true)) {
+            return response()->json(['message' => 'Only occupied or billing tables can be merged.'], 422);
+        }
+
+        if ($secondary->status !== 'available') {
+            return response()->json(['message' => 'Only available tables can be merged in.'], 422);
+        }
+
+        if ($secondary->floor_id !== $table->floor_id) {
+            return response()->json(['message' => 'Only tables on the same floor can be merged.'], 422);
+        }
+
+        DB::transaction(function () use ($table, $secondary) {
+            $table->update([
+                'is_merge_primary' => true,
+                'merged_with_table_id' => null,
+            ]);
+
+            $secondary->update([
+                'status' => $table->status,
+                'merged_with_table_id' => $table->id,
+                'is_merge_primary' => false,
+            ]);
+        });
+
+        $realtime->touch(['tables', 'orders', 'pos', 'billing']);
+
+        return response()->json([
+            ...$this->payload(),
+            'merge' => [
+                'primary' => $table->code,
+                'secondary' => $secondary->code,
+                'groupId' => 'merge-' . $table->id,
+            ],
+            'message' => "{$secondary->code} merged with {$table->code}",
+        ]);
     }
 
     public function store(Request $request, RealtimeNotifier $realtime): JsonResponse
@@ -207,7 +360,16 @@ class TableController extends Controller
                 'label' => $floor->name,
             ])->values()->all(),
             'tables' => RestaurantTable::with(['floor', 'orders.items', 'orders.invoice', 'reservations'])->orderBy('code')->get()->map(fn (RestaurantTable $table) => $this->tableResource($table))->values()->all(),
-            'reservations' => Reservation::with(['table', 'floor'])->whereDate('date', '>=', now()->subDay()->toDateString())->latest('date')->limit(80)->get()->map(fn (Reservation $reservation) => $this->reservationResource($reservation))->values()->all(),
+            'reservations' => Reservation::with(['table', 'floor'])
+                ->whereBetween('date', [now()->toDateString(), now()->addDay()->toDateString()])
+                ->whereIn('status', ['pending', 'confirmed', 'arrived', 'seated'])
+                ->orderBy('date')
+                ->orderBy('time')
+                ->limit(160)
+                ->get()
+                ->map(fn (Reservation $reservation) => $this->reservationResource($reservation))
+                ->values()
+                ->all(),
         ];
     }
 
@@ -219,6 +381,10 @@ class TableController extends Controller
             ->filter(fn (Reservation $reservation) => $reservation->date?->toDateString() === now()->toDateString())
             ->sortBy('time')
             ->first();
+        $since = $order?->started_at ? (int) $order->started_at->diffInMinutes(now()) : null;
+        if ($table->status === 'cleaning' && ! $order) {
+            $since = $table->updated_at ? (int) $table->updated_at->diffInMinutes(now()) : 0;
+        }
 
         return [
             'dbId' => $table->id,
@@ -228,17 +394,33 @@ class TableController extends Controller
             'seats' => (int) $table->seats,
             'shape' => $table->shape,
             'status' => $table->status,
+            'groupId' => $table->is_merge_primary ? 'merge-' . $table->id : ($table->merged_with_table_id ? 'merge-' . $table->merged_with_table_id : null),
+            'mergedWithTableId' => $table->merged_with_table_id,
+            'groupPrimary' => $table->is_merge_primary,
             'reservationId' => $reservation?->code,
+            'reservationDate' => $reservation?->date?->toDateString(),
             'reservationTime' => $reservation ? substr((string) $reservation->time, 0, 5) : null,
             'reservationCustomer' => $reservation?->customer_name,
+            'reservationPhone' => $reservation?->phone,
             'reservationGuests' => $reservation ? (int) $reservation->guests : null,
+            'reservationNotes' => $reservation?->special_request,
             'guests' => $order?->guests,
             'waiter' => $order?->waiter?->name,
             'customer' => $order?->customer?->name ?? ($order ? 'Walk-in' : null),
+            'orderId' => $order?->id,
             'orderCode' => $order?->code,
             'amount' => $order?->invoice?->grandTotal() ?? $order?->subtotal(),
-            'since' => $order?->started_at ? (int) $order->started_at->diffInMinutes(now()) : null,
-            'items' => $order?->items?->map(fn ($item) => ['name' => $item->menuItem?->name ?? 'Item', 'qty' => $item->qty])->values()->all() ?? [],
+            'since' => $since,
+            'kitchen' => $order ? [
+                'new' => $order->items->where('status', 'sent')->count(),
+                'prep' => $order->items->whereIn('status', ['accepted', 'preparing'])->count(),
+                'ready' => $order->items->where('status', 'ready')->count(),
+            ] : null,
+            'items' => $order?->items?->map(fn ($item) => [
+                'name' => $item->menuItem?->name ?? 'Item',
+                'qty' => $item->qty,
+                'state' => strtoupper($item->status),
+            ])->values()->all() ?? [],
         ];
     }
 

@@ -26,8 +26,11 @@
         <div class="flex gap-2">
             <button type="button" @click="back()"
                     class="h-10 flex-1 rounded-md border border-slate-300 bg-white text-[12px] font-bold uppercase tracking-wide text-slate-700 hover:border-slate-900">Cancel</button>
-            <button type="button" @click="confirmWaiterChange()"
-                    class="h-10 flex-1 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800">Assign</button>
+            <button type="button" @click="confirmWaiterChange()" :disabled="saving"
+                    class="flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-slate-900 text-[12px] font-black uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300">
+                <span x-show="saving && savingAction === 'waiter'" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                <span x-text="saving && savingAction === 'waiter' ? 'Assigning...' : 'Assign'"></span>
+            </button>
         </div>
     </x-slot:footer>
 </x-pos.dialog>
