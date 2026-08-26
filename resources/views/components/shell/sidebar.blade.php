@@ -86,11 +86,11 @@
     @endphp
     <div class="shrink-0 border-t border-slate-800 p-3">
         <div class="flex items-center gap-2.5 rounded-lg bg-slate-800/70 p-2 max-[1279px]:justify-center">
-            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-white">{{ $initials }}</span>
-            <span class="min-w-0 flex-1 leading-tight max-[1279px]:hidden">
+            <a href="{{ route('profile.edit') }}" class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-white ring-0 transition hover:ring-2 hover:ring-brand-300" title="View profile">{{ $initials }}</a>
+            <a href="{{ route('profile.edit') }}" class="min-w-0 flex-1 leading-tight max-[1279px]:hidden" title="View profile">
                 <span class="block truncate text-[12px] font-semibold text-white">{{ $employee->name ?? auth()->user()?->name }}</span>
                 <span class="block truncate text-[10px] text-slate-400">{{ $employee?->role?->name ?? 'Staff' }}</span>
-            </span>
+            </a>
             <form method="POST" action="{{ route('logout') }}" class="max-[1279px]:hidden">
                 @csrf
                 <button type="submit" class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-slate-700 hover:text-white" title="Log out">

@@ -17,6 +17,7 @@ export default defineConfig({
                 'resources/css/billing.css',
                 'resources/js/billing.js',
                 'resources/css/admin.css',
+                'resources/js/dashboard.js',
                 'resources/js/reservations.js',
                 'resources/js/customers.js',
                 'resources/js/menu.js',

@@ -86,6 +86,36 @@ class AuthPermissionTest extends TestCase
         $this->assertTrue(Hash::check('new-secure-password', $user->fresh()->password));
     }
 
+    public function test_authenticated_employee_can_view_and_update_profile(): void
+    {
+        [$user, $employee] = $this->actingAsEmployeeWithPermissions([['Inventory', 'View']]);
+
+        $this->get('/profile')
+            ->assertOk()
+            ->assertSee('My Profile')
+            ->assertSee($employee->employee_code);
+
+        $this->put('/profile', [
+            'name' => 'Updated Operator',
+            'email' => 'updated.operator@example.test',
+            'phone' => '9876500001',
+            'address' => 'Station Road, Ichapur',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'name' => 'Updated Operator',
+            'email' => 'updated.operator@example.test',
+        ]);
+        $this->assertDatabaseHas('employees', [
+            'id' => $employee->id,
+            'name' => 'Updated Operator',
+            'email' => 'updated.operator@example.test',
+            'phone' => '9876500001',
+            'address' => 'Station Road, Ichapur',
+        ]);
+    }
+
     public function test_login_redirects_to_first_permitted_sidebar_module(): void
     {
         $user = User::factory()->create(['email' => 'inventory@example.test', 'password' => 'password']);

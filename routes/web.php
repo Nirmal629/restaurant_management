@@ -11,6 +11,7 @@ use App\Http\Controllers\KdsController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReservationController;
@@ -37,6 +38,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/realtime/stream', [RealtimeController::class, 'stream'])->name('realtime.stream');
     Route::get('/change-password', [PasswordController::class, 'edit'])->name('password.change');
     Route::put('/change-password', [PasswordController::class, 'update'])->name('password.update');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::view('/dashboard', 'dashboard')->name('dashboard');
     Route::get('/pos', [PosController::class, 'index'])->middleware('permission:POS,View')->name('pos');
     Route::get('/pos/data', [PosController::class, 'data'])->middleware('permission:POS,View')->name('pos.data');
