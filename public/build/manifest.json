@@ -1,0 +1,224 @@
+{
+  "_kit-BsZ37nPd.js": {
+    "file": "assets/kit-BsZ37nPd.js",
+    "name": "kit"
+  },
+  "_module.esm-B9wHR0Zz.js": {
+    "file": "assets/module.esm-B9wHR0Zz.js",
+    "name": "module.esm"
+  },
+  "_realtime-BrlU0Ixg.js": {
+    "file": "assets/realtime-BrlU0Ixg.js",
+    "name": "realtime"
+  },
+  "resources/css/admin.css": {
+    "file": "assets/admin-DBPo4yrV.css",
+    "src": "resources/css/admin.css",
+    "isEntry": true,
+    "name": "admin",
+    "names": [
+      "admin.css"
+    ]
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-CN5Vufb4.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/css/billing.css": {
+    "file": "assets/billing-Ch-e8mTG.css",
+    "src": "resources/css/billing.css",
+    "isEntry": true,
+    "name": "billing",
+    "names": [
+      "billing.css"
+    ]
+  },
+  "resources/css/kds.css": {
+    "file": "assets/kds-bN-S8Ql8.css",
+    "src": "resources/css/kds.css",
+    "isEntry": true,
+    "name": "kds",
+    "names": [
+      "kds.css"
+    ]
+  },
+  "resources/css/pos.css": {
+    "file": "assets/pos-XrhC1oXK.css",
+    "src": "resources/css/pos.css",
+    "isEntry": true,
+    "name": "pos",
+    "names": [
+      "pos.css"
+    ]
+  },
+  "resources/css/tables.css": {
+    "file": "assets/tables-Bfy8yESz.css",
+    "src": "resources/css/tables.css",
+    "isEntry": true,
+    "name": "tables",
+    "names": [
+      "tables.css"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-DUr89oQr.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/billing.js": {
+    "file": "assets/billing-CZa9PTo0.js",
+    "name": "billing",
+    "src": "resources/js/billing.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_realtime-BrlU0Ixg.js"
+    ]
+  },
+  "resources/js/customers.js": {
+    "file": "assets/customers-DOIZfi0q.js",
+    "name": "customers",
+    "src": "resources/js/customers.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_kit-BsZ37nPd.js"
+    ]
+  },
+  "resources/js/dashboard.js": {
+    "file": "assets/dashboard-DdEiSZxH.js",
+    "name": "dashboard",
+    "src": "resources/js/dashboard.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js"
+    ]
+  },
+  "resources/js/employees.js": {
+    "file": "assets/employees-1ms8wBrI.js",
+    "name": "employees",
+    "src": "resources/js/employees.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_kit-BsZ37nPd.js"
+    ]
+  },
+  "resources/js/expenses.js": {
+    "file": "assets/expenses-iGgKhji1.js",
+    "name": "expenses",
+    "src": "resources/js/expenses.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_kit-BsZ37nPd.js"
+    ]
+  },
+  "resources/js/inventory.js": {
+    "file": "assets/inventory-Ce7lcvJ4.js",
+    "name": "inventory",
+    "src": "resources/js/inventory.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_kit-BsZ37nPd.js",
+      "_realtime-BrlU0Ixg.js"
+    ]
+  },
+  "resources/js/kds.js": {
+    "file": "assets/kds-CMJgMTcm.js",
+    "name": "kds",
+    "src": "resources/js/kds.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_realtime-BrlU0Ixg.js"
+    ]
+  },
+  "resources/js/menu.js": {
+    "file": "assets/menu-BaqCQo7-.js",
+    "name": "menu",
+    "src": "resources/js/menu.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_kit-BsZ37nPd.js"
+    ]
+  },
+  "resources/js/orders.js": {
+    "file": "assets/orders-VBD_86Yc.js",
+    "name": "orders",
+    "src": "resources/js/orders.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_realtime-BrlU0Ixg.js"
+    ]
+  },
+  "resources/js/pos.js": {
+    "file": "assets/pos-DY-s872B.js",
+    "name": "pos",
+    "src": "resources/js/pos.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_realtime-BrlU0Ixg.js"
+    ]
+  },
+  "resources/js/purchases.js": {
+    "file": "assets/purchases-BiT2rnjM.js",
+    "name": "purchases",
+    "src": "resources/js/purchases.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_kit-BsZ37nPd.js"
+    ]
+  },
+  "resources/js/reports.js": {
+    "file": "assets/reports-CFt2MQDE.js",
+    "name": "reports",
+    "src": "resources/js/reports.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_kit-BsZ37nPd.js"
+    ]
+  },
+  "resources/js/reservations.js": {
+    "file": "assets/reservations-BXup70iH.js",
+    "name": "reservations",
+    "src": "resources/js/reservations.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_kit-BsZ37nPd.js",
+      "_realtime-BrlU0Ixg.js"
+    ]
+  },
+  "resources/js/settings.js": {
+    "file": "assets/settings-grkZqEXX.js",
+    "name": "settings",
+    "src": "resources/js/settings.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js"
+    ]
+  },
+  "resources/js/tables.js": {
+    "file": "assets/tables-CoxPitfv.js",
+    "name": "tables",
+    "src": "resources/js/tables.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-B9wHR0Zz.js",
+      "_realtime-BrlU0Ixg.js"
+    ]
+  }
+}
